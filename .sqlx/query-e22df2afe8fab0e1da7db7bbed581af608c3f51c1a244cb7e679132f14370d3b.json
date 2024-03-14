@@ -1,0 +1,69 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE changes\n            SET\n                owner_id = COALESCE($1, owner_id),\n                resource_id = COALESCE($2, resource_id),\n                operation = COALESCE($3, operation),\n                resource_type = COALESCE($4, resource_type),\n                diff_json = COALESCE($5, diff_json)\n            WHERE id = $6\n            RETURNING *\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 2,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 3,
+        "name": "owner_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
+        "name": "resource_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 5,
+        "name": "operation",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "resource_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "diff_json",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "e22df2afe8fab0e1da7db7bbed581af608c3f51c1a244cb7e679132f14370d3b"
+}

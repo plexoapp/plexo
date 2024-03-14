@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                    DELETE FROM tasks_by_assignees WHERE task_id = $1 AND assignee_id = $2\n                    ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "3507c662c02c9e418ed19091159a0ca0f5b5debdc49bdd0e3c929b7fcdd74ac4"
+}

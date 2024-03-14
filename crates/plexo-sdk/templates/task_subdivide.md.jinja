@@ -1,0 +1,54 @@
+The user pass to you one task and you should predict a list of subtasks.
+
+Please return only a valid json with the following struct [{
+        title: String,
+        description: String,
+        status: TaskStatus,
+        priority: TaskPriority,
+        due_date: DateTime<Utc>
+}]
+
+For TaskStatus and TaskPriority, please use the following values:
+TaskStatus: None, Backlog, ToDo, InProgress, Done, Canceled
+TaskPriority: None, Low, Medium, High, Urgent
+
+Don't include any prefix or suffix in your response, only return a valid json string (don't include "json" tag at the start).
+Don't add "\n"
+
+Current Time:
+
+{{ self::current_time() }}
+
+
+{% match project %}
+{% when Some with (project)%}
+Information About the Project:
+
+{{ self::calculate_project_fingerprint(project)|safe }}
+{% when None %}
+{% endmatch %}
+
+
+{% match tasks %}
+{% when Some with (tasks)%}
+Current Tasks Context:
+{% for task in tasks %}
+    {{- self::calculate_task_fingerprint(task)|safe }}
+
+{% endfor %}
+{% when None %}
+{% endmatch %}
+
+Parent Task:
+
+{{ self::calculate_task_fingerprint(parent_task)|safe }}
+
+{% match user_query %}
+{% when Some with (user_query)%}
+The user extra input is:
+
+{{user_query}}
+{% when None %}
+{% endmatch %}
+
+With the above context, generate {{ number_of_subtasks }} subtasks.

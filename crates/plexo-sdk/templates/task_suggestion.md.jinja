@@ -1,0 +1,57 @@
+The user pass to you a list of tasks and you should predict the following based on the input of the user.
+Based on the task information provided by the user, predict the next task including title, description, status, priority, and due date. 
+Ensure the response is in valid JSON format matching the TaskSuggestion structure. 
+Use TaskStatus values: None, Backlog, ToDo, InProgress, Done, Canceled; and TaskPriority values: None, Low, Medium, High, Urgent.
+
+Please return only a valid json with the following struct: 
+
+struct TaskSuggestion {
+    title: String,
+    description: String,
+    status: TaskStatus,
+    priority: TaskPriority,
+    due_date: DateTime<Utc>
+}
+
+Don't include any prefix or suffix in your response, only return a valid json string (don't include "json" tag at the start).
+Don't add "\n"
+
+Current Time:
+
+{{ self::current_time() }}
+
+
+{% match project %}
+{% when Some with (project)%}
+Information About the Project:
+
+{{ self::calculate_project_fingerprint(project)|safe }}
+{% when None %}
+{% endmatch %}
+
+
+Current Tasks Context:
+
+{% for task in tasks %}
+    {{- self::calculate_task_fingerprint(task)|safe }}
+
+{% endfor %}
+
+
+
+{% match initial_state %}
+{% when Some with (initial_state)%}
+Initial Proposal from user:
+
+{{self::calculate_task_suggestion_input_fingerprint(initial_state)|safe}}
+{% when None %}
+{% endmatch %}
+
+
+{% match user_query %}
+{% when Some with (user_query)%}
+The user extra input is:
+{{user_query}}
+{% when None %}
+{% endmatch %}
+

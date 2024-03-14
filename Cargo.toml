@@ -1,0 +1,7 @@
+[workspace]
+members = ["crates/plexo-sdk", "crates/plexo-core"]
+resolver = "2"
+
+[workspace.dependencies]
+plexo-core = { path = "crates/plexo-core" }
+plexo-sdk = { path = "crates/plexo-sdk" }

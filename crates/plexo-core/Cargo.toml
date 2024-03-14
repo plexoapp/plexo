@@ -1,0 +1,39 @@
+[package]
+name = "plexo-core"
+version = "0.2.8"
+edition = "2021"
+
+[dependencies]
+plexo-sdk.workspace = true # "0.4.20"
+uuid = "1.7.0"
+chrono = "0.4.35"
+jsonwebtoken = "9.2.0"
+serde = "1.0.197"
+argon2 = "0.5.3"
+oauth2 = "4.4.2"
+serde_json = "1.0.114"
+thiserror = "1.0.58"
+cookie = "0.18.0"
+dotenv = "0.15.0"
+async-graphql-poem = "7.0.2"
+lazy_static = "1.4.0"
+tokio-stream = "0.1.14"
+tokio = { version = "1.36.0", features = ["full"] }
+async-graphql = { version = "7.0.2", features = [
+    "decimal",
+    "chrono",
+    "dataloader",
+    "uuid",
+    "tracing",
+] }
+reqwest = { version = "0.11.26", features = ["json"] }
+poem-openapi = { version = "4.0.1", features = [
+    "swagger-ui",
+    "chrono",
+    "uuid",
+] }
+poem = { version = "2.0.1", features = ["cookie", "static-files"] }
+tracing-subscriber = "0.3.18"
+tracing = "0.1.40"
+lettre = "0.11.4"
+askama = "0.12.1"

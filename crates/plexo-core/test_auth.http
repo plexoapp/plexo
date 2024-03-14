@@ -1,0 +1,6 @@
+POST http://localhost:8081/auth/email/login
+{
+    "email": "admin@plexo.app",
+    "password": "admin"
+}
+

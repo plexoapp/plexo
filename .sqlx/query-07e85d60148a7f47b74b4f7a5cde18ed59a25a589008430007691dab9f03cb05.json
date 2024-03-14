@@ -1,0 +1,83 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE members\n            SET\n                name = COALESCE($1, name),\n                email = COALESCE($2, email),\n                role = COALESCE($3, role),\n                github_id = COALESCE($4, github_id),\n                google_id = COALESCE($5, google_id),\n                photo_url = COALESCE($6, photo_url),\n                password_hash = COALESCE($7, password_hash)\n            WHERE id = $8\n            RETURNING *\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 2,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 3,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "email",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "password_hash",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "github_id",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 7,
+        "name": "google_id",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 8,
+        "name": "photo_url",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 9,
+        "name": "role",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "07e85d60148a7f47b74b4f7a5cde18ed59a25a589008430007691dab9f03cb05"
+}
