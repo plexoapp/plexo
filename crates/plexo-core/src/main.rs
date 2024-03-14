@@ -1,8 +1,6 @@
-use std::{error::Error, str::FromStr};
-
 use dotenv::dotenv;
 use plexo_core::{
-    api::{graphql::schema::GraphQLSchema, openapi::api::PlexoOpenAPI},
+    api::graphql::schema::GraphQLSchema,
     auth::handlers::{email_basic_login_handler, github_callback_handler, github_sign_in_handler, logout_handler},
     core::{
         app::new_core_from_env,
@@ -11,7 +9,7 @@ use plexo_core::{
     handlers::{graphiq_handler, graphql_handler, version_handler, ws_switch_handler},
 };
 use poem::{get, listener::TcpListener, middleware::Cors, post, EndpointExt, Route, Server};
-use poem_openapi::OpenApiService;
+use std::{error::Error, str::FromStr};
 use tracing::{info, subscriber::set_global_default, Level};
 use tracing_subscriber::FmtSubscriber;
 
@@ -26,29 +24,31 @@ async fn main() -> Result<(), Box<dyn Error>> {
     .expect("setting default subscriber failed");
 
     let core = new_core_from_env().await?;
+    let engine_version = core.engine.version().unwrap();
 
     let org = core.prelude().await?;
 
     info!("welcome to {:?}", org.name);
+    info!("version: {}", engine_version);
 
     let graphql_schema = core.graphql_api_schema();
 
-    let api_prefix = "/v1/api";
+    // let api_prefix = "/v1/api";
 
-    let openapi_server = format!("{}{}", *DOMAIN, api_prefix);
+    // let openapi_server = format!("{}{}", *DOMAIN, api_prefix);
 
-    let api_service = OpenApiService::new(PlexoOpenAPI::new(core.clone()), "Plexo Open API", "1.0").server(openapi_server);
+    // let api_service = OpenApiService::new(PlexoOpenAPI::new(core.clone()), "Plexo Open API", "1.0").server(openapi_server);
 
-    let spec_json_handler = api_service.spec_endpoint();
-    let spec_yaml_handler = api_service.spec_endpoint_yaml();
+    // let spec_json_handler = api_service.spec_endpoint();
+    // let spec_yaml_handler = api_service.spec_endpoint_yaml();
 
-    let swagger_ui = api_service.swagger_ui();
+    // let swagger_ui = api_service.swagger_ui();
 
     let app = Route::new()
-        .nest(api_prefix, api_service)
-        .nest("/swagger", swagger_ui)
-        .at("/openapi.json", get(spec_json_handler))
-        .at("/openapi.yaml", get(spec_yaml_handler))
+        // .nest(api_prefix, api_service)
+        // .nest("/swagger", swagger_ui)
+        // .at("/openapi.json", get(spec_json_handler))
+        // .at("/openapi.yaml", get(spec_yaml_handler))
         // .nest("/", static_page)
         // Non authenticated routes
         .at("/auth/email/login", post(email_basic_login_handler))

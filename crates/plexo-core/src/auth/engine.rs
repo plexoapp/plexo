@@ -3,8 +3,8 @@ use argon2::{
     Argon2, PasswordHash, PasswordHasher, PasswordVerifier,
 };
 use oauth2::{
-    basic::BasicClient, reqwest::async_http_client, AuthUrl, AuthorizationCode, ClientId,
-    ClientSecret, CsrfToken, RedirectUrl, Scope, TokenResponse, TokenUrl,
+    basic::BasicClient, reqwest::async_http_client, AuthUrl, AuthorizationCode, ClientId, ClientSecret, CsrfToken, RedirectUrl,
+    Scope, TokenResponse, TokenUrl,
 };
 
 use reqwest::Url;
@@ -41,23 +41,14 @@ impl AuthEngine {
             let github_client_id = ClientId::new(github_client_id.to_string());
             let github_client_secret = ClientSecret::new(github_client_secret.to_string());
 
-            let auth_url = AuthUrl::new("https://github.com/login/oauth/authorize".to_string())
-                .expect("Invalid authorization endpoint URL");
+            let auth_url =
+                AuthUrl::new("https://github.com/login/oauth/authorize".to_string()).expect("Invalid authorization endpoint URL");
             let token_url =
-                TokenUrl::new("https://github.com/login/oauth/access_token".to_string())
-                    .expect("Invalid token endpoint URL");
+                TokenUrl::new("https://github.com/login/oauth/access_token".to_string()).expect("Invalid token endpoint URL");
 
             github_client = Some(
-                BasicClient::new(
-                    github_client_id,
-                    Some(github_client_secret),
-                    auth_url,
-                    Some(token_url),
-                )
-                .set_redirect_uri(
-                    RedirectUrl::new(github_redirect_url.to_string())
-                        .expect("Invalid redirect URL"),
-                ),
+                BasicClient::new(github_client_id, Some(github_client_secret), auth_url, Some(token_url))
+                    .set_redirect_uri(RedirectUrl::new(github_redirect_url.to_string()).expect("Invalid redirect URL")),
             );
         }
 
@@ -88,10 +79,7 @@ impl AuthEngine {
         //     _ => {}
         // }
 
-        let jwt_engine = JWTEngine::new(
-            jwt_access_token_secret.to_string(),
-            jwt_refresh_token_secret.to_string(),
-        );
+        let jwt_engine = JWTEngine::new(jwt_access_token_secret.to_string(), jwt_refresh_token_secret.to_string());
 
         Self {
             jwt_engine,
@@ -109,11 +97,7 @@ impl AuthEngine {
         })
     }
 
-    pub async fn exchange_github_code(
-        &self,
-        code: AuthorizationCode,
-        _state: CsrfToken,
-    ) -> Result<String, String> {
+    pub async fn exchange_github_code(&self, code: AuthorizationCode, _state: CsrfToken) -> Result<String, String> {
         let token_result = self
             .github_client
             .as_ref()
@@ -128,12 +112,8 @@ impl AuthEngine {
         }
     }
 
-    pub fn extract_claims(
-        &self,
-        plexo_auth_token: &PlexoAuthToken,
-    ) -> Result<PlexoAuthTokenClaims, PlexoAppError> {
-        self.jwt_engine
-            .decode_session_token(plexo_auth_token.0.as_str())
+    pub fn extract_claims(&self, plexo_auth_token: &PlexoAuthToken) -> Result<PlexoAuthTokenClaims, PlexoAppError> {
+        self.jwt_engine.decode_session_token(plexo_auth_token.0.as_str())
     }
 
     pub fn validate_password(&self, password: &str, password_hash: &str) -> bool {
@@ -141,9 +121,7 @@ impl AuthEngine {
             return false;
         };
 
-        Argon2::default()
-            .verify_password(password.as_bytes(), &parsed_hash)
-            .is_ok()
+        Argon2::default().verify_password(password.as_bytes(), &parsed_hash).is_ok()
     }
 
     pub fn hash_password(&self, password: &str) -> String {

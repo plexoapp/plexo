@@ -1,0 +1,4 @@
+crates/plexo-sdk/target
+crates/plexo-core/target
+target
+.env
