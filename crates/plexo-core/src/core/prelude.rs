@@ -1,8 +1,8 @@
 use super::{
     app::Core,
     config::{
-        ADMIN_EMAIL, ADMIN_NAME, ADMIN_PASSWORD, ADMIN_PHOTO_URL, ORGANIZATION_EMAIL, ORGANIZATION_HUB_ID, ORGANIZATION_NAME,
-        ORGANIZATION_PHOTO_URL, ORGANIZATION_PLAN_ID, ORGANIZATION_URL,
+        ADMIN_EMAIL, ADMIN_NAME, ADMIN_PASSWORD, ADMIN_PHOTO_URL, ORGANIZATION_EMAIL, ORGANIZATION_HUB_ID,
+        ORGANIZATION_NAME, ORGANIZATION_PHOTO_URL, ORGANIZATION_PLAN_ID, ORGANIZATION_URL,
     },
     email::FirstWelcomeTemplate,
 };
@@ -12,22 +12,37 @@ use askama::Template;
 use plexo_sdk::{
     common::commons::SortOrder,
     organization::operations::{Organization, OrganizationCrudOperations, OrganizationInitializationInputBuilder},
-    resources::members::{
-        extensions::{CreateMemberFromEmailInputBuilder, MembersExtensionOperations},
-        member::MemberRole,
-        operations::{GetMembersInput, GetMembersInputBuilder, MemberCrudOperations},
+    resources::{
+        changes::change::ChangeResourceType,
+        members::{
+            extensions::{CreateMemberFromEmailInputBuilder, MembersExtensionOperations},
+            member::MemberRole,
+            operations::{GetMembersInput, GetMembersInputBuilder, MemberCrudOperations},
+        },
     },
 };
+use tokio::task;
+use tokio_stream::StreamExt;
 use tracing::info;
 
 impl Core {
     pub async fn prelude(&self) -> Result<Organization, Box<dyn std::error::Error>> {
         self.normalize_admin_user().await?;
 
-        match self.engine.get_organization().await? {
+        let org = match self.engine.get_organization().await? {
             Some(organization) => Ok(organization),
             None => self.initialize_organization().await,
-        }
+        }?;
+
+        let engine = self.engine.clone();
+
+        task::spawn(async move {
+            while let Some(not) = engine.listen(ChangeResourceType::Tasks).await.unwrap().next().await {
+                info!("task change: {:?}", not);
+            }
+        });
+
+        Ok(org)
     }
 
     async fn normalize_admin_user(&self) -> Result<(), Box<dyn std::error::Error>> {
@@ -129,6 +144,7 @@ impl Core {
 
         let html = welcome.render().unwrap();
 
-        self.send_email(from, to, subject, html.as_str()).map_err(|err| err.into())
+        self.send_email(from, to, subject, html.as_str())
+            .map_err(|err| err.into())
     }
 }

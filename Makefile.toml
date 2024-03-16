@@ -1,0 +1,6 @@
+[tasks.depot]
+workspace = false
+script = '''
+CARGO_MAKE_CRATE_VERSION=$(cargo metadata --format-version=1 --no-deps | jq --raw-output '.packages[] | select(.name == "plexo-core") | .version') && \
+depot build --platform linux/amd64 --tag minskylab/plexo-core:v${CARGO_MAKE_CRATE_VERSION} --push .
+'''
