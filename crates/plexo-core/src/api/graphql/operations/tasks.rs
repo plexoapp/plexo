@@ -56,6 +56,12 @@ impl TasksGraphQLMutation {
 
         let saved_input = input.clone();
 
+        if let Some( ref mut subtasks) = input.subtasks {
+            for subtask in subtasks.iter_mut() {
+                subtask.owner_id = input.owner_id;
+            }
+        };
+
         let task = core.engine.create_task(input).await?;
         let saved_task = task.clone();
 
