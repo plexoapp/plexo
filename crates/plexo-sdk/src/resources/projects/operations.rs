@@ -304,7 +304,7 @@ impl ProjectCrudOperations for SDKEngine {
                 name = COALESCE($1, name),
                 description = COALESCE($2, description),
                 prefix = COALESCE($3, prefix),
-                lead_id = COALESCE($4, lead_id),
+                lead_id = NULLIF(COALESCE($4, lead_id), '00000000-0000-0000-0000-000000000000'),
                 start_date = COALESCE($5, start_date),
                 due_date = COALESCE($6, due_date),
                 status = COALESCE($7, status),
