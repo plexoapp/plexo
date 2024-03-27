@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/plexo-sdk", "crates/plexo-core"]
+members = ["crates/plexo-sdk", "crates/plexo-core", "crates/plexo-next"]
 resolver = "2"
 
 [workspace.dependencies]
