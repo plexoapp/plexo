@@ -2272,8 +2272,11 @@ dependencies = [
 name = "plexo-next"
 version = "0.1.0"
 dependencies = [
+ "async-openai",
+ "dotenv",
  "git2",
  "plexo-sdk",
+ "tokio",
 ]
 
 [[package]]
