@@ -3,9 +3,9 @@ use std::sync::Arc;
 use async_graphql::dataloader::DataLoader;
 
 use crate::resources::{
-    assets::loader::AssetLoader, changes::loader::ChangeLoader, labels::loader::LabelLoader,
-    members::loader::MemberLoader, projects::loader::ProjectLoader, tasks::loader::TaskLoader,
-    teams::loader::TeamLoader,
+    assets::loader::AssetLoader, changes::loader::ChangeLoader, chats::loader::ChatLoader, labels::loader::LabelLoader,
+    members::loader::MemberLoader, messages::loader::MessageLoader, projects::loader::ProjectLoader,
+    tasks::loader::TaskLoader, teams::loader::TeamLoader,
 };
 
 use super::engine::SDKEngine;
@@ -19,6 +19,8 @@ pub struct SDKLoaders {
     pub asset_loader: DataLoader<AssetLoader>,
     pub label_loader: DataLoader<LabelLoader>,
     pub change_loader: DataLoader<ChangeLoader>,
+    pub chat_loader: DataLoader<ChatLoader>,
+    pub message_loader: DataLoader<MessageLoader>,
 
     pub engine: Arc<SDKEngine>,
 }
@@ -33,6 +35,8 @@ impl SDKLoaders {
             asset_loader: DataLoader::new(AssetLoader::new(engine.clone()), tokio::spawn),
             label_loader: DataLoader::new(LabelLoader::new(engine.clone()), tokio::spawn),
             change_loader: DataLoader::new(ChangeLoader::new(engine.clone()), tokio::spawn),
+            chat_loader: DataLoader::new(ChatLoader::new(engine.clone()), tokio::spawn),
+            message_loader: DataLoader::new(MessageLoader::new(engine.clone()), tokio::spawn),
 
             engine,
         }

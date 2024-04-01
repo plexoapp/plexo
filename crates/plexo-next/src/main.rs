@@ -6,9 +6,9 @@ use async_openai::{
     Client,
 };
 use dotenv::dotenv;
-use git2::{Buf, Diff, DiffDelta, DiffHunk, DiffLine, DiffOptions, Repository};
-use std::{error::Error, io::BufWriter};
-use std::{io::Write, str};
+use git2::{DiffDelta, DiffHunk, DiffLine, Repository};
+use std::error::Error;
+use std::str;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -38,7 +38,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     println!("Diff: {:?}", diff.stats()?);
 
-    let location = git2::ApplyLocation::Index;
+    // let location = git2::ApplyLocation::Index;
+    // diff.print(git2::DiffFormat::Patch, print_diff_line)?;
 
     // let options = git2::ApplyOptions::new();
 
@@ -82,14 +83,16 @@ async fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn print_diff_line(_delta: DiffDelta, _hunk: Option<DiffHunk>, line: DiffLine, buff: &mut BufWriter<Vec<u8>>) -> bool {
+fn _print_diff_line(_delta: DiffDelta, _hunk: Option<DiffHunk>, line: DiffLine) -> bool {
     match line.origin() {
         '+' | '-' | ' ' => print!("{}", line.origin()),
         _ => {}
     }
-    let l = str::from_utf8(line.content()).unwrap().to_string();
+    let _l = str::from_utf8(line.content()).unwrap().to_string();
 
-    buff.write_all(l.as_bytes()).unwrap();
+    // buff.write_all(l.as_bytes()).unwrap();
+
+    // println!("{}", l);
 
     true
 }
