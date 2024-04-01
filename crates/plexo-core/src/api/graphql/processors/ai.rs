@@ -76,8 +76,15 @@ impl AIProcessorGraphQLMutation {
 
 #[Subscription]
 impl AIProcessorGraphQLSubscription {
-    async fn chat(&self, ctx: &Context<'_>, _chat_id: Uuid, _message: String) -> impl Stream<Item = u8> {
-        let (_core, _member_id) = extract_context(ctx).unwrap();
+    async fn chat(&self, ctx: &Context<'_>, chat_id: Uuid, _message: String) -> impl Stream<Item = u8> {
+        let (core, _member_id) = extract_context(ctx).unwrap();
+
+        let _chat = core.engine.get_chat(chat_id).await.unwrap();
+
+        // match chat.resource_type {
+        //     "project" => {},
+        //     _ => {},
+        // }
 
         tokio_stream::iter(vec![127])
     }

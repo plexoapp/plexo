@@ -6,6 +6,8 @@ pub enum SDKError {
     VersionNotFound,
     #[error("Resource not found")]
     ResourceNotFound,
+    #[error("Invalid Resource Type")]
+    InvalidResourceType,
     #[error("SQLX Error")]
     SQLXError(#[from] sqlx::Error),
     #[error("Database Migration Error")]

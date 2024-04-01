@@ -10,6 +10,7 @@ use crate::{
     common::commons::SortOrder,
     errors::sdk::SDKError,
     resources::{
+        chats::operations::ChatCrudOperations,
         projects::{
             operations::{GetProjectsInputBuilder, ProjectCrudOperations},
             project::Project,
@@ -21,13 +22,17 @@ use crate::{
     },
 };
 
-use super::projects::{ProjectSuggestion, ProjectSuggestionInput, ProjectTaskSuggestionInput};
+use super::{
+    chat::{ChatResponse, ChatResponseInput},
+    projects::{ProjectSuggestion, ProjectSuggestionInput, ProjectTaskSuggestionInput},
+};
 
 #[async_trait]
 pub trait CognitionOperationsV2 {
     async fn get_suggestions_v2(&self, input: TaskSuggestionInput) -> Result<TaskSuggestion, SDKError>;
     async fn subdivide_task_v2(&self, input: SubdivideTaskInput) -> Result<Vec<TaskSuggestion>, SDKError>;
     async fn get_project_suggestion(&self, input: ProjectSuggestionInput) -> Result<ProjectSuggestion, SDKError>;
+    async fn get_chat_response(&self, input: ChatResponseInput) -> Result<ChatResponse, SDKError>;
 }
 
 fn calculate_task_fingerprint(task: &Task) -> String {
@@ -248,5 +253,23 @@ impl CognitionOperationsV2 for SDKEngine {
         })?;
 
         Ok(suggestion_result)
+    }
+
+    async fn get_chat_response(&self, input: ChatResponseInput) -> Result<ChatResponse, SDKError> {
+        let chat = self.get_chat(input.chat_id).await?;
+
+        match chat.resource_type.as_str() {
+            "project" | "task" => {
+                let system_message = PlexoSystemTemplate {}.render().unwrap();
+
+                let response = self.chat_completion(system_message, input.message).await;
+
+                Ok(ChatResponse {
+                    chat_id: input.chat_id,
+                    response,
+                })
+            }
+            _ => Err(SDKError::InvalidResourceType),
+        }
     }
 }
