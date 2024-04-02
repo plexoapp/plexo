@@ -19,7 +19,7 @@ use super::{
         tasks::{TasksGraphQLMutation, TasksGraphQLQuery, TasksGraphQLSubscription},
         teams::{TeamsGraphQLMutation, TeamsGraphQLQuery, TeamsGraphQLSubscription},
     },
-    processors::ai::AIProcessorGraphQLQuery,
+    processors::ai::{AIProcessorGraphQLMutation, AIProcessorGraphQLQuery, AIProcessorGraphQLSubscription},
 };
 
 #[derive(MergedObject, Default)]
@@ -45,6 +45,7 @@ pub struct MutationRoot(
     TeamsGraphQLMutation,
     MembersGraphQLMutation,
     ProfileGraphQLMutation,
+    AIProcessorGraphQLMutation,
     // ChangesGraphQLMutation,
 );
 
@@ -56,6 +57,7 @@ pub struct SubscriptionRoot(
     LabelsGraphQLSubscription,
     MembersGraphQLSubscription,
     TeamsGraphQLSubscription,
+    AIProcessorGraphQLSubscription,
 );
 
 pub trait GraphQLSchema {
@@ -64,11 +66,15 @@ pub trait GraphQLSchema {
 
 impl GraphQLSchema for Core {
     fn graphql_api_schema(&self) -> Schema<QueryRoot, MutationRoot, SubscriptionRoot> {
-        Schema::build(QueryRoot::default(), MutationRoot::default(), SubscriptionRoot::default())
-            .data(self.clone()) // TODO: Optimize this
-            .extension(Tracing)
-            .extension(Analyzer)
-            // .extension(open_telemetry)
-            .finish()
+        Schema::build(
+            QueryRoot::default(),
+            MutationRoot::default(),
+            SubscriptionRoot::default(),
+        )
+        .data(self.clone()) // TODO: Optimize this
+        .extension(Tracing)
+        .extension(Analyzer)
+        // .extension(open_telemetry)
+        .finish()
     }
 }

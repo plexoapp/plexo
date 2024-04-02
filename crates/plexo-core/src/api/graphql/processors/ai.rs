@@ -16,7 +16,6 @@ use plexo_sdk::{
 };
 
 use tokio_stream::Stream;
-use uuid::Uuid;
 
 use crate::api::graphql::commons::extract_context;
 

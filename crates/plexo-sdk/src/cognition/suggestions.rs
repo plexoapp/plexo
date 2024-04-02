@@ -153,7 +153,10 @@ impl CognitionCapabilities for SDKEngine {
 
         Box::pin(stream! {
             while let Some(response) = response.next().await {
-                yield response.unwrap().choices.first().unwrap().delta.content.clone().unwrap();
+                match response.unwrap().choices.first().unwrap().delta.content.clone() {
+                    Some(content) => yield content,
+                    None => break
+                }
             }
         })
     }

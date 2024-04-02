@@ -27,7 +27,7 @@ use crate::{
 };
 
 use super::{
-    chat::{ChatResponse, ChatResponseInput},
+    chat::ChatResponseInput,
     projects::{ProjectSuggestion, ProjectSuggestionInput, ProjectTaskSuggestionInput},
 };
 
