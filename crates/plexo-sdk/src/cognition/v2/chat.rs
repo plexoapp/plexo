@@ -18,3 +18,11 @@ pub struct ChatResponse {
     pub chat_id: Uuid,
     pub response: String,
 }
+
+#[derive(Debug, Default, Builder, Object, SimpleObject, Deserialize)]
+#[builder(pattern = "owned")]
+pub struct ChatResponseChunk {
+    pub delta: String,
+    pub message: String,
+    pub message_id: Option<Uuid>,
+}

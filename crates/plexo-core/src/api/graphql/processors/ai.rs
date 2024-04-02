@@ -4,7 +4,7 @@ use plexo_sdk::{
     cognition::{
         operations::{SubdivideTaskInput, TaskSuggestion, TaskSuggestionInput},
         v2::{
-            chat::ChatResponseInput,
+            chat::{ChatResponseChunk, ChatResponseInput},
             operations::CognitionOperationsV2,
             projects::{ProjectSuggestion, ProjectSuggestionInput},
         },
@@ -79,7 +79,7 @@ impl AIProcessorGraphQLMutation {
 
 #[Subscription]
 impl AIProcessorGraphQLSubscription {
-    async fn chat(&self, ctx: &Context<'_>, input: ChatResponseInput) -> impl Stream<Item = String> {
+    async fn chat(&self, ctx: &Context<'_>, input: ChatResponseInput) -> impl Stream<Item = ChatResponseChunk> {
         let (core, _member_id) = extract_context(ctx).unwrap();
 
         // let _chat = core.engine.get_chat(chat_id).await.unwrap();

@@ -2,7 +2,7 @@ use std::pin::Pin;
 
 use askama::Template;
 use async_trait::async_trait;
-use tokio_stream::Stream;
+use tokio_stream::{Stream, StreamExt};
 
 use crate::{
     backend::engine::SDKEngine,
@@ -27,7 +27,7 @@ use crate::{
 };
 
 use super::{
-    chat::ChatResponseInput,
+    chat::{ChatResponseChunk, ChatResponseInput},
     projects::{ProjectSuggestion, ProjectSuggestionInput, ProjectTaskSuggestionInput},
 };
 
@@ -39,7 +39,7 @@ pub trait CognitionOperationsV2 {
     async fn get_chat_response(
         &self,
         input: ChatResponseInput,
-    ) -> Result<Pin<Box<dyn Stream<Item = String> + Send>>, SDKError>;
+    ) -> Result<Pin<Box<dyn Stream<Item = ChatResponseChunk> + Send>>, SDKError>;
 }
 
 fn calculate_task_fingerprint(task: &Task) -> String {
@@ -265,7 +265,7 @@ impl CognitionOperationsV2 for SDKEngine {
     async fn get_chat_response(
         &self,
         input: ChatResponseInput,
-    ) -> Result<Pin<Box<dyn Stream<Item = String> + Send>>, SDKError> {
+    ) -> Result<Pin<Box<dyn Stream<Item = ChatResponseChunk> + Send>>, SDKError> {
         let chat = self.get_chat(input.chat_id).await?;
 
         match chat.resource_type.as_str() {
@@ -286,7 +286,16 @@ impl CognitionOperationsV2 for SDKEngine {
 
                 let response = self.chat_response(system_message, messages).await;
 
-                Ok(response)
+                let mut total_message = String::new();
+
+                Ok(Box::pin(response.map(move |delta| {
+                    total_message += &delta;
+                    ChatResponseChunk {
+                        delta,
+                        message: total_message.clone(),
+                        message_id: None,
+                    }
+                })))
             }
             _ => Err(SDKError::InvalidResourceType),
         }
