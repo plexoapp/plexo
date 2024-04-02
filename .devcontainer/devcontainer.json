@@ -10,7 +10,7 @@
   "updateContentCommand": "cargo build",
   "postCreateCommand": "",
   "postAttachCommand": {
-    "server": "cargo run"
+    "server": "cargo run --bin plexo-core"
   },
   "portsAttributes": {
     "8888": {
@@ -26,5 +26,5 @@
       "extensions": ["rust-lang.rust-analyzer"]
     }
   },
-  "forwardPorts": [8888]
+  "forwardPorts": [8081]
 }
