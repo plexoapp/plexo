@@ -43,7 +43,9 @@ pub struct GetChatsInput {
 #[derive(Default, Builder, Object, InputObject, Serialize)]
 #[builder(pattern = "owned")]
 pub struct CreateChatInput {
+    #[graphql(skip)]
     pub owner_id: Uuid,
+
     pub resource_id: Uuid,
     pub resource_type: String,
 

@@ -1,16 +1,26 @@
+use std::pin::Pin;
+
 use async_openai::types::{
-    ChatCompletionRequestSystemMessageArgs, ChatCompletionRequestUserMessageArgs, CreateChatCompletionRequestArgs,
+    ChatCompletionRequestMessage, ChatCompletionRequestSystemMessageArgs, ChatCompletionRequestUserMessageArgs,
+    CreateChatCompletionRequestArgs,
 };
+use async_stream::stream;
 use async_trait::async_trait;
 
+use serde_json::Value;
+
+use tokio_stream::{Stream, StreamExt};
 use uuid::Uuid;
 
 use super::operations::TaskSuggestionInput;
 use crate::{
     backend::engine::SDKEngine,
-    resources::tasks::{
-        operations::{GetTasksInputBuilder, TaskCrudOperations},
-        task::Task,
+    resources::{
+        messages::message::Message,
+        tasks::{
+            operations::{GetTasksInputBuilder, TaskCrudOperations},
+            task::Task,
+        },
     },
 };
 
@@ -18,9 +28,15 @@ use crate::{
 pub trait CognitionCapabilities {
     async fn chat_completion(&self, system_message: String, user_message: String) -> String;
     async fn acquire_tasks_fingerprints(&self, number_of_tasks: u32, project_id: Option<Uuid>) -> Vec<String>;
+    async fn chat_response(
+        &self,
+        system_message: String,
+        messages: Vec<Message>,
+    ) -> Pin<Box<dyn Stream<Item = String> + Send>>;
 
     fn calculate_task_fingerprint(task: Task) -> String;
     fn calculate_task_suggestion_fingerprint(task_suggestion: TaskSuggestionInput) -> String;
+    fn message_to_chat_completion(message: &Message) -> ChatCompletionRequestMessage;
 }
 
 #[async_trait]
@@ -104,5 +120,55 @@ impl CognitionCapabilities for SDKEngine {
             })
             .map(Self::calculate_task_fingerprint)
             .collect::<Vec<String>>()
+    }
+
+    async fn chat_response(
+        &self,
+        system_message: String,
+        messages: Vec<Message>,
+    ) -> Pin<Box<dyn Stream<Item = String> + Send>> {
+        let mut conversation_messages: Vec<ChatCompletionRequestMessage> =
+            messages.iter().map(Self::message_to_chat_completion).collect();
+
+        let mut messages: Vec<ChatCompletionRequestMessage> = vec![ChatCompletionRequestSystemMessageArgs::default()
+            .content(system_message)
+            .build()
+            .unwrap()
+            .into()];
+
+        messages.append(&mut conversation_messages);
+
+        let request = CreateChatCompletionRequestArgs::default()
+            .max_tokens(1024u16)
+            .model(self.config.llm_model_name.clone())
+            .messages(messages)
+            .build()
+            .unwrap();
+
+        // let response = self.llm_client.chat().create(request).await.unwrap();
+
+        // response.choices.first().unwrap().message.content.clone().unwrap()
+
+        let mut response = self.llm_client.chat().create_stream(request).await.unwrap();
+
+        Box::pin(stream! {
+            while let Some(response) = response.next().await {
+                yield response.unwrap().choices.first().unwrap().delta.content.clone().unwrap();
+            }
+        })
+    }
+
+    fn message_to_chat_completion(message: &'_ Message) -> ChatCompletionRequestMessage {
+        let val: Value = serde_json::from_str(message.content.as_str()).unwrap();
+
+        match val.clone() {
+            Value::Object(obj) => match obj.get("role").unwrap().as_str().unwrap() {
+                "user" => ChatCompletionRequestMessage::User(serde_json::from_value(val).unwrap()),
+                "assistant" => ChatCompletionRequestMessage::Assistant(serde_json::from_value(val).unwrap()),
+                "tool" | "function" => todo!(),
+                _ => todo!(),
+            },
+            _ => todo!(),
+        }
     }
 }

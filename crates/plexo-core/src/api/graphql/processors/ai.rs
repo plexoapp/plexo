@@ -4,6 +4,7 @@ use plexo_sdk::{
     cognition::{
         operations::{SubdivideTaskInput, TaskSuggestion, TaskSuggestionInput},
         v2::{
+            chat::ChatResponseInput,
             operations::CognitionOperationsV2,
             projects::{ProjectSuggestion, ProjectSuggestionInput},
         },
@@ -65,7 +66,10 @@ impl AIProcessorGraphQLQuery {
 #[Object]
 impl AIProcessorGraphQLMutation {
     async fn create_chat(&self, ctx: &Context<'_>, input: CreateChatInput) -> Result<Chat> {
-        let (core, _member_id) = extract_context(ctx)?;
+        let (core, member_id) = extract_context(ctx)?;
+        let mut input = input;
+
+        input.owner_id = member_id;
 
         core.engine
             .create_chat(input)
@@ -76,16 +80,18 @@ impl AIProcessorGraphQLMutation {
 
 #[Subscription]
 impl AIProcessorGraphQLSubscription {
-    async fn chat(&self, ctx: &Context<'_>, chat_id: Uuid, _message: String) -> impl Stream<Item = u8> {
+    async fn chat(&self, ctx: &Context<'_>, input: ChatResponseInput) -> impl Stream<Item = String> {
         let (core, _member_id) = extract_context(ctx).unwrap();
 
-        let _chat = core.engine.get_chat(chat_id).await.unwrap();
+        // let _chat = core.engine.get_chat(chat_id).await.unwrap();
+
+        core.engine.get_chat_response(input).await.unwrap()
 
         // match chat.resource_type {
         //     "project" => {},
         //     _ => {},
         // }
 
-        tokio_stream::iter(vec![127])
+        // stream
     }
 }

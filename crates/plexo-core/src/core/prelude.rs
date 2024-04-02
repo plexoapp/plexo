@@ -6,9 +6,7 @@ use super::{
     },
     email::FirstWelcomeTemplate,
 };
-
 use askama::Template;
-
 use plexo_sdk::{
     common::commons::SortOrder,
     organization::operations::{Organization, OrganizationCrudOperations, OrganizationInitializationInputBuilder},

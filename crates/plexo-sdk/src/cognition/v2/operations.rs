@@ -1,5 +1,8 @@
+use std::pin::Pin;
+
 use askama::Template;
 use async_trait::async_trait;
+use tokio_stream::Stream;
 
 use crate::{
     backend::engine::SDKEngine,
@@ -11,6 +14,7 @@ use crate::{
     errors::sdk::SDKError,
     resources::{
         chats::operations::ChatCrudOperations,
+        messages::operations::{GetMessagesInputBuilder, GetMessagesWhereBuilder, MessageCrudOperations},
         projects::{
             operations::{GetProjectsInputBuilder, ProjectCrudOperations},
             project::Project,
@@ -32,7 +36,10 @@ pub trait CognitionOperationsV2 {
     async fn get_suggestions_v2(&self, input: TaskSuggestionInput) -> Result<TaskSuggestion, SDKError>;
     async fn subdivide_task_v2(&self, input: SubdivideTaskInput) -> Result<Vec<TaskSuggestion>, SDKError>;
     async fn get_project_suggestion(&self, input: ProjectSuggestionInput) -> Result<ProjectSuggestion, SDKError>;
-    async fn get_chat_response(&self, input: ChatResponseInput) -> Result<ChatResponse, SDKError>;
+    async fn get_chat_response(
+        &self,
+        input: ChatResponseInput,
+    ) -> Result<Pin<Box<dyn Stream<Item = String> + Send>>, SDKError>;
 }
 
 fn calculate_task_fingerprint(task: &Task) -> String {
@@ -255,19 +262,31 @@ impl CognitionOperationsV2 for SDKEngine {
         Ok(suggestion_result)
     }
 
-    async fn get_chat_response(&self, input: ChatResponseInput) -> Result<ChatResponse, SDKError> {
+    async fn get_chat_response(
+        &self,
+        input: ChatResponseInput,
+    ) -> Result<Pin<Box<dyn Stream<Item = String> + Send>>, SDKError> {
         let chat = self.get_chat(input.chat_id).await?;
 
         match chat.resource_type.as_str() {
             "project" | "task" => {
                 let system_message = PlexoSystemTemplate {}.render().unwrap();
 
-                let response = self.chat_completion(system_message, input.message).await;
+                let messages = self
+                    .get_messages(
+                        GetMessagesInputBuilder::default()
+                            .sort_by("created_at".to_string())
+                            .limit(50)
+                            .sort_order(SortOrder::Asc)
+                            .filter(GetMessagesWhereBuilder::default().chat_id(chat.id).build().unwrap())
+                            .build()
+                            .unwrap(),
+                    )
+                    .await?;
 
-                Ok(ChatResponse {
-                    chat_id: input.chat_id,
-                    response,
-                })
+                let response = self.chat_response(system_message, messages).await;
+
+                Ok(response)
             }
             _ => Err(SDKError::InvalidResourceType),
         }
