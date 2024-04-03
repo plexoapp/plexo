@@ -12,13 +12,13 @@ use super::message::Message;
 
 #[async_trait]
 pub trait MessageRelations {
-    async fn sender(&self, loaders: &SDKLoaders) -> Result<Member, SDKError>;
+    async fn owner(&self, loaders: &SDKLoaders) -> Result<Member, SDKError>;
     async fn chat(&self, loaders: &SDKLoaders) -> Result<Chat, SDKError>;
 }
 
 #[async_trait]
 impl MessageRelations for Message {
-    async fn sender(&self, loaders: &SDKLoaders) -> Result<Member, SDKError> {
+    async fn owner(&self, loaders: &SDKLoaders) -> Result<Member, SDKError> {
         loaders
             .member_loader
             .load_one(self.owner_id)
