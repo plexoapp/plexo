@@ -1,18 +1,5 @@
-use std::pin::Pin;
-
-use async_openai::types::{
-    ChatCompletionRequestMessage, ChatCompletionRequestSystemMessageArgs, ChatCompletionRequestUserMessageArgs,
-    CreateChatCompletionRequestArgs,
-};
-use async_stream::stream;
-use async_trait::async_trait;
-
-use serde_json::Value;
-
-use tokio_stream::{Stream, StreamExt};
-use uuid::Uuid;
-
 use super::operations::TaskSuggestionInput;
+
 use crate::{
     backend::engine::SDKEngine,
     resources::{
@@ -23,6 +10,18 @@ use crate::{
         },
     },
 };
+
+use async_openai::types::{
+    ChatCompletionRequestMessage, ChatCompletionRequestSystemMessageArgs, ChatCompletionRequestUserMessageArgs,
+    CreateChatCompletionRequestArgs,
+};
+
+use async_stream::stream;
+use async_trait::async_trait;
+use serde_json::Value;
+use std::pin::Pin;
+use tokio_stream::{Stream, StreamExt};
+use uuid::Uuid;
 
 #[async_trait]
 pub trait CognitionCapabilities {
@@ -146,10 +145,6 @@ impl CognitionCapabilities for SDKEngine {
             .messages(messages)
             .build()
             .unwrap();
-
-        // let response = self.llm_client.chat().create(request).await.unwrap();
-
-        // response.choices.first().unwrap().message.content.clone().unwrap()
 
         let mut response = self.llm_client.chat().create_stream(request).await.unwrap();
 

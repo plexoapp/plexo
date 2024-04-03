@@ -107,7 +107,10 @@ pub struct ProjectSuggestionTemplate {
 
 #[derive(Template)]
 #[template(path = "project_related_chat.md.jinja", ext = "plain")]
-pub struct ProjectRelatedChatTemplate {}
+pub struct ProjectRelatedChatTemplate {
+    project: Project,
+    tasks: Vec<Task>,
+}
 
 #[async_trait]
 impl CognitionOperationsV2 for SDKEngine {
@@ -279,7 +282,30 @@ impl CognitionOperationsV2 for SDKEngine {
 
         match chat.resource_type.as_str() {
             "project" | "task" => {
-                let system_message = ProjectRelatedChatTemplate {}.render().unwrap();
+                let project = self.get_project(chat.resource_id).await?;
+
+                let tasks = self
+                    .get_tasks(
+                        GetTasksInputBuilder::default()
+                            .filter(
+                                GetTasksWhereBuilder::default()
+                                    .project_id(chat.resource_id)
+                                    .build()
+                                    .unwrap(),
+                            )
+                            .sort_by("created_at".to_string())
+                            .sort_order(SortOrder::Asc)
+                            .limit(10)
+                            .build()
+                            .ok(),
+                    )
+                    .await?;
+
+                tasks.iter().for_each(|task| {
+                    println!("task: {:?}", task);
+                });
+
+                let system_message = ProjectRelatedChatTemplate { project, tasks }.render().unwrap();
 
                 let mut messages = self
                     .get_messages(
