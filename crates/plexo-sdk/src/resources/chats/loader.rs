@@ -19,7 +19,7 @@ impl Loader<Uuid> for ChatLoader {
     async fn load(&self, keys: &'_ [Uuid]) -> Result<HashMap<Uuid, Self::Value>, Self::Error> {
         let messages = sqlx::query!(
             r#"
-            SELECT * FROM messages WHERE id = ANY($1)
+            SELECT * FROM chats WHERE id = ANY($1)
             "#,
             &keys
         )

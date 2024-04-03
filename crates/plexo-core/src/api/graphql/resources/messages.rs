@@ -3,7 +3,7 @@ use plexo_sdk::resources::messages::{message::Message as SDKMessage, relations::
 
 use crate::api::graphql::commons::extract_context;
 
-use super::members::Member;
+use super::{chats::Chat, members::Member};
 
 #[derive(SimpleObject)]
 #[graphql(complex)]
@@ -28,5 +28,15 @@ impl Message {
             .await
             .map_err(|e| e.into())
             .map(|member| member.into())
+    }
+
+    async fn chat(&self, ctx: &Context<'_>) -> Result<Chat> {
+        let (plexo_engine, _member_id) = extract_context(ctx)?;
+
+        self.message
+            .chat(&plexo_engine.loaders)
+            .await
+            .map_err(|e| e.into())
+            .map(|chat| chat.into())
     }
 }
