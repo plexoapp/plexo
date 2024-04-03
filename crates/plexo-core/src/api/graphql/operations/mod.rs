@@ -1,6 +1,7 @@
 pub mod assets;
 pub mod auth;
 pub mod changes;
+pub mod chats;
 pub mod labels;
 pub mod members;
 pub mod profile;
