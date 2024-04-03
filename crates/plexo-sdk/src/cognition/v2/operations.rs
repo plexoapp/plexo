@@ -328,7 +328,7 @@ impl CognitionOperationsV2 for SDKEngine {
                 let engine = self.clone();
 
                 Ok(Box::pin(stream! {
-                    println!("start_stream");
+                    // println!("start_stream");
 
                     let mut last_chunk = None;
 
@@ -337,10 +337,12 @@ impl CognitionOperationsV2 for SDKEngine {
                         yield chunk;
                     }
 
-                    println!("end_stream");
-                    println!("last_chunk: {:?}", last_chunk);
+                    // println!("end_stream");
+                    // println!("last_chunk: {:?}", last_chunk);
 
-                    engine.create_message(
+                    let mut last_chunk_cloned = last_chunk.clone().unwrap();
+
+                    let message = engine.create_message(
                         CreateMessageInputBuilder::default()
                             .chat_id(chat.id)
                             .owner_id(chat.owner_id)
@@ -355,7 +357,12 @@ impl CognitionOperationsV2 for SDKEngine {
                             .build()
                             .unwrap(),
                     )
-                    .await.unwrap();
+                    .await
+                    .unwrap();
+
+                    last_chunk_cloned.message_id = Some(message.id);
+
+                    yield last_chunk_cloned;
                 }))
             }
             _ => Err(SDKError::InvalidResourceType),
