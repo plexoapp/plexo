@@ -12,6 +12,7 @@ use super::{
         assets::{AssetsGraphQLMutation, AssetsGraphQLQuery, AssetsGraphQLSubscription},
         auth::AuthMutation,
         changes::ChangesGraphQLQuery,
+        chats::{ChatsGraphQLMutation, ChatsGraphQLQuery, ChatsGraphQLSubscription},
         labels::{LabelsGraphQLMutation, LabelsGraphQLQuery, LabelsGraphQLSubscription},
         members::{MembersGraphQLMutation, MembersGraphQLQuery, MembersGraphQLSubscription},
         profile::{ProfileGraphQLMutation, ProfileGraphQLQuery},
@@ -33,6 +34,7 @@ pub struct QueryRoot(
     ChangesGraphQLQuery,
     AIProcessorGraphQLQuery,
     ProfileGraphQLQuery,
+    ChatsGraphQLQuery,
 );
 
 #[derive(MergedObject, Default)]
@@ -46,6 +48,7 @@ pub struct MutationRoot(
     MembersGraphQLMutation,
     ProfileGraphQLMutation,
     AIProcessorGraphQLMutation,
+    ChatsGraphQLMutation,
     // ChangesGraphQLMutation,
 );
 
@@ -58,6 +61,7 @@ pub struct SubscriptionRoot(
     MembersGraphQLSubscription,
     TeamsGraphQLSubscription,
     AIProcessorGraphQLSubscription,
+    ChatsGraphQLSubscription,
 );
 
 pub trait GraphQLSchema {

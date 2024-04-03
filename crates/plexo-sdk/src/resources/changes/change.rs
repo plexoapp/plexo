@@ -50,4 +50,5 @@ pub enum ChangeResourceType {
     Assets,
     Labels,
     Changes,
+    Chats,
 }

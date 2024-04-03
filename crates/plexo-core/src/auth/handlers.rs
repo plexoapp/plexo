@@ -15,7 +15,9 @@ use poem::{handler, Body, IntoResponse, Response, Result};
 use serde_json::{json, Value};
 
 use crate::core::app::Core;
-use crate::core::config::{COOKIE_SESSION_DOMAIN, COOKIE_SESSION_NAME, COOKIE_SESSION_SAME_SITE, COOKIE_SESSION_SECURE};
+use crate::core::config::{
+    COOKIE_SESSION_DOMAIN, COOKIE_SESSION_NAME, COOKIE_SESSION_SAME_SITE, COOKIE_SESSION_SECURE,
+};
 
 use super::{
     commons::GITHUB_USER_API,
@@ -40,7 +42,10 @@ pub async fn github_sign_in_handler(plexo_core: Data<&Core>) -> impl IntoRespons
 }
 
 #[handler]
-pub async fn github_callback_handler(plexo_core: Data<&Core>, params: Query<GithubCallbackParams>) -> impl IntoResponse {
+pub async fn github_callback_handler(
+    plexo_core: Data<&Core>,
+    params: Query<GithubCallbackParams>,
+) -> impl IntoResponse {
     let code = AuthorizationCode::new(params.code.clone());
     let state = CsrfToken::new(params.state.clone());
 

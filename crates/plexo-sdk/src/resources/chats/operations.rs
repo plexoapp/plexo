@@ -40,7 +40,7 @@ pub struct GetChatsInput {
     pub offset: Option<i32>,
 }
 
-#[derive(Default, Builder, Object, InputObject, Serialize)]
+#[derive(Default, Builder, Object, InputObject, Serialize, Clone)]
 #[builder(pattern = "owned")]
 pub struct CreateChatInput {
     #[graphql(skip)]
