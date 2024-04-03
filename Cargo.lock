@@ -2298,7 +2298,7 @@ checksum = "d231b230927b5e4ad203db57bbcbee2802f6bce620b1e4a9024a07d94e2907ec"
 
 [[package]]
 name = "plexo-core"
-version = "0.2.8"
+version = "0.3.0"
 dependencies = [
  "argon2",
  "askama",
@@ -2338,7 +2338,7 @@ dependencies = [
 
 [[package]]
 name = "plexo-sdk"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "askama",
  "async-graphql",

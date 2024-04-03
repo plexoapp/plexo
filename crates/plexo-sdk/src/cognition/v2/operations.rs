@@ -342,7 +342,7 @@ impl CognitionOperationsV2 for SDKEngine {
 
                 let mut total_message = String::new();
 
-                let mut raw_response = Box::pin(response.map(move |delta| {
+                let mut mapped_response = Box::pin(response.map(move |delta| {
                     total_message += &delta;
                     ChatResponseChunk {
                         delta,
@@ -354,17 +354,12 @@ impl CognitionOperationsV2 for SDKEngine {
                 let engine = self.clone();
 
                 Ok(Box::pin(stream! {
-                    // println!("start_stream");
-
                     let mut last_chunk = None;
 
-                    while let Some(chunk) = raw_response.next().await {
+                    while let Some(chunk) = mapped_response.next().await {
                         last_chunk = Some(chunk.clone());
                         yield chunk;
                     }
-
-                    // println!("end_stream");
-                    // println!("last_chunk: {:?}", last_chunk);
 
                     let mut last_chunk_cloned = last_chunk.clone().unwrap();
 
