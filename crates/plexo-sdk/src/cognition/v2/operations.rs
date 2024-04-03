@@ -301,9 +301,9 @@ impl CognitionOperationsV2 for SDKEngine {
                     )
                     .await?;
 
-                tasks.iter().for_each(|task| {
-                    println!("task: {:?}", task);
-                });
+                // tasks.iter().for_each(|task| {
+                //     println!("task: {:?}", task);
+                // });
 
                 let system_message = ProjectRelatedChatTemplate { project, tasks }.render().unwrap();
 
