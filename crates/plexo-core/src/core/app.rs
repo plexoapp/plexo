@@ -8,13 +8,15 @@ use plexo_sdk::backend::{
 use crate::{auth::engine::AuthEngine, errors::app::PlexoAppError};
 
 use super::config::{
-    GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET, GITHUB_REDIRECT_URL, JWT_ACCESS_TOKEN_SECRET, SMTP_HOST, SMTP_PASSWORD, SMTP_PORT,
-    SMTP_USERNAME,
+    GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET, GITHUB_REDIRECT_URL, JWT_ACCESS_TOKEN_SECRET, SMTP_HOST, SMTP_PASSWORD,
+    SMTP_PORT, SMTP_USERNAME,
 };
 
 use tracing::info;
 
-use lettre::{message::header::ContentType, transport::smtp::authentication::Credentials, Message, SmtpTransport, Transport};
+use lettre::{
+    message::header::ContentType, transport::smtp::authentication::Credentials, Message, SmtpTransport, Transport,
+};
 
 #[derive(Clone)]
 pub struct Core {

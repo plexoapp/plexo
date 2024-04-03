@@ -100,7 +100,9 @@ impl ProfileGraphQLMutation {
         core.engine
             .update_member(
                 member_id,
-                UpdateMemberInputBuilder::default().password_hash(new_password_hash).build()?,
+                UpdateMemberInputBuilder::default()
+                    .password_hash(new_password_hash)
+                    .build()?,
             )
             .await
             .map(|member| member.into())
