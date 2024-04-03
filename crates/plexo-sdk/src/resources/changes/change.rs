@@ -46,6 +46,7 @@ pub enum ChangeResourceType {
     Tasks,
     Projects,
     Members,
+    Messages,
     Teams,
     Assets,
     Labels,

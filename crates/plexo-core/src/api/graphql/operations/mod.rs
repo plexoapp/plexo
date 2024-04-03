@@ -4,6 +4,7 @@ pub mod changes;
 pub mod chats;
 pub mod labels;
 pub mod members;
+pub mod messages;
 pub mod profile;
 pub mod projects;
 pub mod tasks;

@@ -23,7 +23,7 @@ impl MessagesGraphQLQuery {
         let (core, _member_id) = extract_context(ctx)?;
 
         core.engine
-            .get_messages(input)
+            .get_messages(input.unwrap_or_default())
             .await
             .map_err(|err| async_graphql::Error::new(err.to_string()))
             .map(|messages| messages.into_iter().map(|message| message.into()).collect())
@@ -150,4 +150,3 @@ impl MessagesGraphQLSubscription {
             .map(|x| x.unwrap())
     }
 }
-
