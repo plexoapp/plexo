@@ -138,6 +138,8 @@ impl CognitionCapabilities for SDKEngine {
 
         messages.append(&mut conversation_messages);
 
+        println!("messages: {:?}", messages);
+
         let request = CreateChatCompletionRequestArgs::default()
             .max_tokens(1024u16)
             .model(self.config.llm_model_name.clone())

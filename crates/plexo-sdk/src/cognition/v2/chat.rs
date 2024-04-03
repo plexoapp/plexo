@@ -19,7 +19,7 @@ pub struct ChatResponse {
     pub response: String,
 }
 
-#[derive(Debug, Default, Builder, Object, SimpleObject, Deserialize)]
+#[derive(Debug, Default, Builder, Object, SimpleObject, Deserialize, Clone)]
 #[builder(pattern = "owned")]
 pub struct ChatResponseChunk {
     pub delta: String,

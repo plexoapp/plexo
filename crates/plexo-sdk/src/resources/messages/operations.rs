@@ -139,8 +139,8 @@ impl MessageCrudOperations for SDKEngine {
 
         let message = sqlx::query!(
             r#"
-            INSERT INTO messages (owner_id, chat_id, resource_id, resource_type, parent_id, status)
-            VALUES ($1, $2, $3, $4, $5, $6)
+            INSERT INTO messages (owner_id, chat_id, resource_id, resource_type, parent_id, status, content)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
             RETURNING *
             "#,
             input.owner_id,
@@ -149,6 +149,7 @@ impl MessageCrudOperations for SDKEngine {
             input.resource_type,
             input.parent_id,
             input.status.map(|s| s.to_string()),
+            input.content,
         )
         .fetch_one(&mut *tx)
         .await?;

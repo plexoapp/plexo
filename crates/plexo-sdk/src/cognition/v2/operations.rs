@@ -1,7 +1,10 @@
 use std::pin::Pin;
 
 use askama::Template;
+use async_stream::stream;
 use async_trait::async_trait;
+
+use serde_json::json;
 use tokio_stream::{Stream, StreamExt};
 
 use crate::{
@@ -14,7 +17,9 @@ use crate::{
     errors::sdk::SDKError,
     resources::{
         chats::operations::ChatCrudOperations,
-        messages::operations::{GetMessagesInputBuilder, GetMessagesWhereBuilder, MessageCrudOperations},
+        messages::operations::{
+            CreateMessageInputBuilder, GetMessagesInputBuilder, GetMessagesWhereBuilder, MessageCrudOperations,
+        },
         projects::{
             operations::{GetProjectsInputBuilder, ProjectCrudOperations},
             project::Project,
@@ -99,6 +104,10 @@ pub struct ProjectSuggestionTemplate {
     initial_tasks: Option<Vec<ProjectTaskSuggestionInput>>,
     user_query: Option<String>,
 }
+
+#[derive(Template)]
+#[template(path = "project_related_chat.md.jinja", ext = "plain")]
+pub struct ProjectRelatedChatTemplate {}
 
 #[async_trait]
 impl CognitionOperationsV2 for SDKEngine {
@@ -270,9 +279,9 @@ impl CognitionOperationsV2 for SDKEngine {
 
         match chat.resource_type.as_str() {
             "project" | "task" => {
-                let system_message = PlexoSystemTemplate {}.render().unwrap();
+                let system_message = ProjectRelatedChatTemplate {}.render().unwrap();
 
-                let messages = self
+                let mut messages = self
                     .get_messages(
                         GetMessagesInputBuilder::default()
                             .sort_by("created_at".to_string())
@@ -284,18 +293,70 @@ impl CognitionOperationsV2 for SDKEngine {
                     )
                     .await?;
 
+                messages.push(
+                    self.create_message(
+                        CreateMessageInputBuilder::default()
+                            .chat_id(chat.id)
+                            .owner_id(chat.owner_id)
+                            .resource_type("project".to_string())
+                            .content(
+                                serde_json::to_string(&json!({
+                                    "role": "user",
+                                    "content": input.message,
+                                }))
+                                .unwrap(),
+                            )
+                            .build()
+                            .unwrap(),
+                    )
+                    .await?,
+                );
+
                 let response = self.chat_response(system_message, messages).await;
 
                 let mut total_message = String::new();
 
-                Ok(Box::pin(response.map(move |delta| {
+                let mut raw_response = Box::pin(response.map(move |delta| {
                     total_message += &delta;
                     ChatResponseChunk {
                         delta,
                         message: total_message.clone(),
                         message_id: None,
                     }
-                })))
+                }));
+
+                let engine = self.clone();
+
+                Ok(Box::pin(stream! {
+                    println!("start_stream");
+
+                    let mut last_chunk = None;
+
+                    while let Some(chunk) = raw_response.next().await {
+                        last_chunk = Some(chunk.clone());
+                        yield chunk;
+                    }
+
+                    println!("end_stream");
+                    println!("last_chunk: {:?}", last_chunk);
+
+                    engine.create_message(
+                        CreateMessageInputBuilder::default()
+                            .chat_id(chat.id)
+                            .owner_id(chat.owner_id)
+                            .resource_type("project".to_string())
+                            .content(
+                                serde_json::to_string(&json!({
+                                    "role": "assistant",
+                                    "content": last_chunk.unwrap().message,
+                                }))
+                                .unwrap(),
+                            )
+                            .build()
+                            .unwrap(),
+                    )
+                    .await.unwrap();
+                }))
             }
             _ => Err(SDKError::InvalidResourceType),
         }
