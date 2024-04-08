@@ -4,12 +4,11 @@ use async_graphql::{
 };
 
 use async_graphql_poem::{GraphQLProtocol, GraphQLRequest, GraphQLResponse, GraphQLWebSocket};
-use serde_json::Value;
+use reqwest::StatusCode;
 
 use poem::{
     handler,
     http::HeaderMap,
-    // web::Html,
     web::{websocket::WebSocket, Data as PoemData, Html},
     IntoResponse,
 };
@@ -41,16 +40,13 @@ pub async fn graphql_handler(
     req: GraphQLRequest,
 ) -> GraphQLResponse {
     let mut req = req.0;
-    // let mut with_token = false;
 
     if let Some(token) = get_token_from_headers(headers) {
         req = req.data(token);
-        // with_token = true;
     }
 
     if let Some(token) = get_token_from_cookie(headers) {
         req = req.data(token);
-        // with_token = true;
     }
 
     schema.execute(req).await.into()
@@ -59,32 +55,59 @@ pub async fn graphql_handler(
 #[handler]
 pub async fn ws_switch_handler(
     schema: PoemData<&Schema<QueryRoot, MutationRoot, SubscriptionRoot>>,
+    headers: &HeaderMap,
     protocol: GraphQLProtocol,
     websocket: WebSocket,
 ) -> impl IntoResponse {
     let schema = schema.0.clone();
-    websocket.protocols(ALL_WEBSOCKET_PROTOCOLS).on_upgrade(move |stream| {
-        GraphQLWebSocket::new(stream, schema, protocol)
-            .on_connection_init(on_connection_init)
-            .serve()
-    })
-}
+    let mut token: Option<PlexoAuthToken> = None;
 
-pub async fn on_connection_init(value: Value) -> async_graphql::Result<Data> {
-    match &value {
-        Value::Object(map) => {
-            if let Some(Value::String(token)) = map.get("Authorization") {
-                let mut data = Data::default();
-                data.insert(PlexoAuthToken(token.to_string()));
+    if let Some(header_token) = get_token_from_headers(headers) {
+        token = Some(header_token);
+    }
 
-                Ok(data)
-            } else {
-                Err("Authorization token is required".into())
-            }
+    if let Some(cookie_token) = get_token_from_cookie(headers) {
+        token = Some(cookie_token);
+    }
+
+    match token {
+        Some(token) => {
+            let mut data = Data::default();
+            data.insert(token);
+
+            websocket
+                .protocols(ALL_WEBSOCKET_PROTOCOLS)
+                .on_upgrade(move |stream| {
+                    GraphQLWebSocket::new(stream, schema, protocol)
+                        // .on_connection_init(on_connection_init)
+                        .with_data(data)
+                        .serve()
+                })
+                .into_response()
         }
-        _ => Err("Authorization token is required".into()),
+        None => poem::Response::builder()
+            .status(StatusCode::BAD_REQUEST)
+            .body("Authorization token is required"),
     }
 }
+
+// pub async fn on_connection_init(value: Value) -> async_graphql::Result<Data> {
+//     match &value {
+//         Value::Object(map) => {
+//             println!("{:?}", map);
+
+//             if let Some(Value::String(token)) = map.get("Authorization") {
+//                 let mut data = Data::default();
+//                 data.insert(PlexoAuthToken(token.to_string()));
+
+//                 Ok(data)
+//             } else {
+//                 Err("Authorization token is required".into())
+//             }
+//         }
+//         _ => Err("Authorization token is required".into()),
+//     }
+// }
 
 #[handler]
 pub async fn version_handler() -> impl IntoResponse {

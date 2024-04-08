@@ -9,13 +9,14 @@ use plexo_sdk::{
             projects::{ProjectSuggestion, ProjectSuggestionInput},
         },
     },
+    errors::sdk::SDKError,
     resources::chats::{
         chat::Chat,
         operations::{ChatCrudOperations, CreateChatInput},
     },
 };
 
-use tokio_stream::Stream;
+use tokio_stream::{Stream, StreamExt};
 
 use crate::api::graphql::commons::extract_context;
 
@@ -74,6 +75,19 @@ impl AIProcessorGraphQLMutation {
             .create_chat(input)
             .await
             .map_err(|err| async_graphql::Error::new(err.to_string()))
+    }
+
+    async fn chat(&self, ctx: &Context<'_>, input: ChatResponseInput) -> Result<ChatResponseChunk> {
+        let (core, _member_id) = extract_context(ctx).unwrap();
+
+        let mut chat_stream = core.engine.get_chat_response(input).await.unwrap();
+        let mut last_chunk = None;
+
+        while let Some(chunk) = chat_stream.next().await {
+            last_chunk = Some(chunk);
+        }
+
+        last_chunk.ok_or(SDKError::LLMStreamError.into())
     }
 }
 

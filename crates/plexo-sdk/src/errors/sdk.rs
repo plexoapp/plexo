@@ -8,6 +8,8 @@ pub enum SDKError {
     ResourceNotFound,
     #[error("Invalid Resource Type")]
     InvalidResourceType,
+    #[error("Error at stream LLM Stream")]
+    LLMStreamError,
     #[error("SQLX Error")]
     SQLXError(#[from] sqlx::Error),
     #[error("Database Migration Error")]
