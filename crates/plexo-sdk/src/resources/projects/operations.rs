@@ -13,7 +13,6 @@ use crate::{
     backend::engine::SDKEngine,
     common::commons::{SortOrder, UpdateListInput},
     errors::sdk::SDKError,
-    resources::tasks::operations::{GetTasksInputBuilder, GetTasksWhereBuilder, TaskCrudOperations},
 };
 
 use super::project::{Project, ProjectStatus, ProjectVisibility};
@@ -417,7 +416,7 @@ impl ProjectCrudOperations for SDKEngine {
             r#"
             UPDATE tasks
             SET
-                project_id = '00000000-0000-0000-0000-000000000000'
+                project_id = NULL
             WHERE project_id = $1
             "#,
             id,
