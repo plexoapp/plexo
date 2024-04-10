@@ -7,6 +7,7 @@ use async_graphql::{Context, Object, Result, Subscription};
 use plexo_sdk::resources::{
     changes::change::{ChangeOperation, ChangeResourceType, ListenEvent},
     projects::operations::{CreateProjectInput, GetProjectsInput, ProjectCrudOperations, UpdateProjectInput},
+    tasks::operations::{GetTasksInputBuilder, GetTasksWhereBuilder, TaskCrudOperations, UpdateTaskInputBuilder},
 };
 
 use serde_json::json;
@@ -122,6 +123,28 @@ impl ProjectsGraphQLMutation {
 
     async fn delete_project(&self, ctx: &Context<'_>, id: Uuid) -> Result<Project> {
         let (core, _member_id) = extract_context(ctx)?;
+
+        let mut tasks = core
+            .engine
+            .get_tasks(
+                GetTasksInputBuilder::default()
+                    .filter(GetTasksWhereBuilder::default().project_id(id).build().unwrap())
+                    .build()
+                    .ok(),
+            )
+            .await?;
+        for task in tasks.iter_mut() {
+            core.engine
+                .update_task(
+                    task.id,
+                    UpdateTaskInputBuilder::default()
+                        .project_id(Uuid::nil())
+                        .build()
+                        .ok()
+                        .unwrap(),
+                )
+                .await?;
+        }
 
         let project = core.engine.delete_project(id).await?;
         let saved_project = project.clone();
