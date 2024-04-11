@@ -410,6 +410,20 @@ impl ProjectCrudOperations for SDKEngine {
     }
 
     async fn delete_project(&self, id: Uuid) -> Result<Project, SDKError> {
+        let mut tx = self.db_pool.as_ref().begin().await?;
+
+        sqlx::query!(
+            r#"
+            UPDATE tasks
+            SET
+                project_id = NULL
+            WHERE project_id = $1
+            "#,
+            id,
+        )
+        .execute(&mut *tx)
+        .await?;
+
         let project_info = sqlx::query!(
             r#"
             DELETE FROM projects WHERE id = $1
@@ -417,8 +431,11 @@ impl ProjectCrudOperations for SDKEngine {
             "#,
             id,
         )
-        .fetch_one(self.db_pool.as_ref())
+        //.fetch_one(self.db_pool.as_ref())
+        .fetch_one(&mut *tx)
         .await?;
+
+        tx.commit().await?;
 
         Ok(Project {
             id: project_info.id,

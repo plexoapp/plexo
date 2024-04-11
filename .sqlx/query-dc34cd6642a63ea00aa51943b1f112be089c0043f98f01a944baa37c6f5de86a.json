@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE tasks\n            SET\n                project_id = NULL\n            WHERE project_id = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "dc34cd6642a63ea00aa51943b1f112be089c0043f98f01a944baa37c6f5de86a"
+}
