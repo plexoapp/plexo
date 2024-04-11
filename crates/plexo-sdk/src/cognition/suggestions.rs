@@ -6,19 +6,20 @@ use crate::{
         messages::message::Message,
         tasks::{
             operations::{GetTasksInputBuilder, TaskCrudOperations},
-            task::Task,
+            task::{Task, TaskPriority, TaskStatus},
         },
     },
 };
 
 use async_openai::types::{
-    ChatCompletionRequestMessage, ChatCompletionRequestSystemMessageArgs, ChatCompletionRequestUserMessageArgs,
-    CreateChatCompletionRequestArgs,
+    ChatCompletionFunctionsArgs, ChatCompletionRequestMessage, ChatCompletionRequestSystemMessageArgs,
+    ChatCompletionRequestUserMessageArgs, CreateChatCompletionRequestArgs,
 };
 
 use async_stream::stream;
 use async_trait::async_trait;
-use serde_json::Value;
+use schemars::{schema_for, JsonSchema};
+use serde_json::{json, Value};
 use std::pin::Pin;
 use tokio_stream::{Stream, StreamExt};
 use uuid::Uuid;
@@ -137,10 +138,30 @@ impl CognitionCapabilities for SDKEngine {
 
         messages.append(&mut conversation_messages);
 
+        let create_task_input_schema = schema_for!(CreateTaskLLMFunctionInput);
+
+        let create_task_function_def = json!({
+            "type": "object",
+            "properties": {
+                "input": &create_task_input_schema,
+            },
+            "required": ["input"],
+        });
+
+        println!("create_task_function_def: {}", create_task_function_def);
+
         let request = CreateChatCompletionRequestArgs::default()
             .max_tokens(1024u16)
             .model(self.config.llm_model_name.clone())
             .messages(messages)
+            // .tools(value)
+            .functions([ChatCompletionFunctionsArgs::default()
+                .name("create_task")
+                .description("Create a task, complete the input object parameter inferred from the user's input.")
+                .parameters(create_task_function_def)
+                .build()
+                .unwrap()])
+            .function_call("auto")
             .build()
             .unwrap();
 
@@ -148,6 +169,8 @@ impl CognitionCapabilities for SDKEngine {
 
         Box::pin(stream! {
             while let Some(response) = response.next().await {
+                println!("response: {:?}", response);
+
                 match response.unwrap().choices.first().unwrap().delta.content.clone() {
                     Some(content) => yield content,
                     None => break
@@ -169,4 +192,21 @@ impl CognitionCapabilities for SDKEngine {
             _ => todo!(),
         }
     }
+}
+
+#[derive(Clone, Default, JsonSchema)]
+pub struct CreateTaskLLMFunctionInput {
+    pub title: String,
+
+    pub status: Option<TaskStatus>,
+    pub priority: Option<TaskPriority>,
+    pub description: Option<String>,
+    pub due_date: Option<String>,
+    pub project_id: Option<String>,
+    pub lead_id: Option<String>,
+    pub parent_id: Option<String>,
+    pub labels: Option<Vec<String>>,
+    pub assignees: Option<Vec<String>>,
+    // pub subtasks: Option<Vec<CreateTaskInput>>,
+    // pub assets: Option<Vec<String>>,
 }
