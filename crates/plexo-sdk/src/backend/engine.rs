@@ -33,7 +33,7 @@ impl SDKConfig {
     pub fn from_env() -> SDKConfig {
         let database_url = var("DATABASE_URL").unwrap();
         let llm_api_key = var("OPENAI_API_KEY").unwrap();
-        let llm_model_name = var("OPENAI_MODEL_NAME").unwrap_or("gpt-3.5-turbo".to_string());
+        let llm_model_name = var("OPENAI_MODEL_NAME").unwrap_or("gpt-3.5-turbo-0125".to_string());
 
         SDKConfig {
             database_url,

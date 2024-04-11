@@ -96,15 +96,6 @@ impl AIProcessorGraphQLSubscription {
     async fn chat(&self, ctx: &Context<'_>, input: ChatResponseInput) -> impl Stream<Item = ChatResponseChunk> {
         let (core, _member_id) = extract_context(ctx).unwrap();
 
-        // let _chat = core.engine.get_chat(chat_id).await.unwrap();
-
         core.engine.get_chat_response(input).await.unwrap()
-
-        // match chat.resource_type {
-        //     "project" => {},
-        //     _ => {},
-        // }
-
-        // stream
     }
 }

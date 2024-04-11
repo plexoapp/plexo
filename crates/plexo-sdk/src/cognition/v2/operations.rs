@@ -15,8 +15,13 @@ use crate::{
     },
     common::commons::SortOrder,
     errors::sdk::SDKError,
+    organization::operations::{Organization, OrganizationCrudOperations},
     resources::{
         chats::operations::ChatCrudOperations,
+        members::{
+            member::Member,
+            operations::{GetMembersInputBuilder, MemberCrudOperations},
+        },
         messages::operations::{
             CreateMessageInputBuilder, GetMessagesInputBuilder, GetMessagesWhereBuilder, MessageCrudOperations,
         },
@@ -27,6 +32,10 @@ use crate::{
         tasks::{
             operations::{GetTasksInputBuilder, GetTasksWhereBuilder, TaskCrudOperations},
             task::Task,
+        },
+        teams::{
+            operations::{GetTeamsInputBuilder, TeamCrudOperations},
+            team::Team,
         },
     },
 };
@@ -52,6 +61,18 @@ fn calculate_task_fingerprint(task: &Task) -> String {
 }
 
 fn calculate_project_fingerprint(project: &Project) -> String {
+    serde_json::to_string_pretty(&project).unwrap()
+}
+
+fn calculate_organization_fingerprint(project: &Organization) -> String {
+    serde_json::to_string_pretty(&project).unwrap()
+}
+
+fn calculate_member_fingerprint(project: &Member) -> String {
+    serde_json::to_string_pretty(&project).unwrap()
+}
+
+fn calculate_team_fingerprint(project: &Team) -> String {
     serde_json::to_string_pretty(&project).unwrap()
 }
 
@@ -110,6 +131,16 @@ pub struct ProjectSuggestionTemplate {
 pub struct ProjectRelatedChatTemplate {
     project: Project,
     tasks: Vec<Task>,
+}
+
+#[derive(Template)]
+#[template(path = "organization_related_chat.md.jinja", ext = "plain")]
+pub struct OrganizationRelatedChatTemplate {
+    organization: Organization,
+    projects: Vec<Project>,
+    tasks: Vec<Task>,
+    members: Vec<Member>,
+    teams: Vec<Team>,
 }
 
 #[async_trait]
@@ -280,8 +311,10 @@ impl CognitionOperationsV2 for SDKEngine {
     ) -> Result<Pin<Box<dyn Stream<Item = ChatResponseChunk> + Send>>, SDKError> {
         let chat = self.get_chat(input.chat_id).await?;
 
-        match chat.resource_type.as_str() {
-            "project" | "task" => {
+        let res_type = chat.resource_type.as_str();
+
+        let system_message = match res_type {
+            "project" => {
                 let project = self.get_project(chat.resource_id).await?;
 
                 let tasks = self
@@ -301,92 +334,147 @@ impl CognitionOperationsV2 for SDKEngine {
                     )
                     .await?;
 
-                // tasks.iter().for_each(|task| {
-                //     println!("task: {:?}", task);
-                // });
+                ProjectRelatedChatTemplate { project, tasks }.render().unwrap()
+            }
+            "organization" => {
+                let organization = self.get_organization().await?.unwrap();
 
-                let system_message = ProjectRelatedChatTemplate { project, tasks }.render().unwrap();
-
-                let mut messages = self
-                    .get_messages(
-                        GetMessagesInputBuilder::default()
-                            .sort_by("created_at".to_string())
+                let projects = self
+                    .get_projects(
+                        GetProjectsInputBuilder::default()
                             .limit(50)
+                            .sort_by("updated_at".to_string())
                             .sort_order(SortOrder::Asc)
-                            .filter(GetMessagesWhereBuilder::default().chat_id(chat.id).build().unwrap())
                             .build()
                             .unwrap(),
                     )
                     .await?;
 
-                messages.push(
-                    self.create_message(
-                        CreateMessageInputBuilder::default()
-                            .chat_id(chat.id)
-                            .owner_id(chat.owner_id)
-                            .resource_type("project".to_string())
-                            .content(
-                                serde_json::to_string(&json!({
-                                    "role": "user",
-                                    "content": input.message,
-                                }))
-                                .unwrap(),
-                            )
+                let tasks = self
+                    .get_tasks(Some(
+                        GetTasksInputBuilder::default()
+                            .limit(50)
+                            .sort_by("updated_at".to_string())
+                            .sort_order(SortOrder::Asc)
+                            .build()
+                            .unwrap(),
+                    ))
+                    .await?;
+
+                let members = self
+                    .get_members(
+                        GetMembersInputBuilder::default()
+                            .limit(50)
+                            .sort_by("updated_at".to_string())
+                            .sort_order(SortOrder::Asc)
                             .build()
                             .unwrap(),
                     )
-                    .await?,
-                );
+                    .await?;
 
-                let response = self.chat_response(system_message, messages).await;
-
-                let mut total_message = String::new();
-
-                let mut mapped_response = Box::pin(response.map(move |delta| {
-                    total_message += &delta;
-                    ChatResponseChunk {
-                        delta,
-                        message: total_message.clone(),
-                        message_id: None,
-                    }
-                }));
-
-                let engine = self.clone();
-
-                Ok(Box::pin(stream! {
-                    let mut last_chunk = None;
-
-                    while let Some(chunk) = mapped_response.next().await {
-                        last_chunk = Some(chunk.clone());
-                        yield chunk;
-                    }
-
-                    let mut last_chunk_cloned = last_chunk.clone().unwrap();
-
-                    let message = engine.create_message(
-                        CreateMessageInputBuilder::default()
-                            .chat_id(chat.id)
-                            .owner_id(chat.owner_id)
-                            .resource_type("project".to_string())
-                            .content(
-                                serde_json::to_string(&json!({
-                                    "role": "assistant",
-                                    "content": last_chunk.unwrap().message,
-                                }))
-                                .unwrap(),
-                            )
+                let teams = self
+                    .get_teams(
+                        GetTeamsInputBuilder::default()
+                            .limit(50)
+                            .sort_by("updated_at".to_string())
+                            .sort_order(SortOrder::Asc)
                             .build()
                             .unwrap(),
                     )
-                    .await
-                    .unwrap();
+                    .await?;
 
-                    last_chunk_cloned.message_id = Some(message.id);
-
-                    yield last_chunk_cloned;
-                }))
+                OrganizationRelatedChatTemplate {
+                    organization,
+                    projects,
+                    tasks,
+                    members,
+                    teams,
+                }
+                .render()
+                .unwrap()
             }
-            _ => Err(SDKError::InvalidResourceType),
-        }
+            _ => return Err(SDKError::InvalidResourceType),
+        };
+
+        let mut messages = self
+            .get_messages(
+                GetMessagesInputBuilder::default()
+                    .sort_by("created_at".to_string())
+                    .limit(50)
+                    .sort_order(SortOrder::Asc)
+                    .filter(GetMessagesWhereBuilder::default().chat_id(chat.id).build().unwrap())
+                    .build()
+                    .unwrap(),
+            )
+            .await?;
+
+        messages.push(
+            self.create_message(
+                CreateMessageInputBuilder::default()
+                    .chat_id(chat.id)
+                    .owner_id(chat.owner_id)
+                    .resource_type(res_type.to_string())
+                    .content(
+                        serde_json::to_string(&json!({
+                            "role": "user",
+                            "content": input.message,
+                        }))
+                        .unwrap(),
+                    )
+                    .build()
+                    .unwrap(),
+            )
+            .await?,
+        );
+
+        let response = self.chat_response(system_message, messages).await;
+
+        let mut total_message = String::new();
+
+        let mut mapped_response = Box::pin(response.map(move |delta| {
+            total_message += &delta;
+
+            ChatResponseChunk {
+                delta,
+                message: total_message.clone(),
+                message_id: None,
+            }
+        }));
+
+        let engine = self.clone();
+        let res_type = res_type.to_string();
+
+        Ok(Box::pin(stream! {
+            let mut last_chunk = None;
+
+            while let Some(chunk) = mapped_response.next().await {
+                last_chunk = Some(chunk.clone());
+                yield chunk;
+            }
+
+            let mut last_chunk_cloned = last_chunk.clone().unwrap();
+
+            let message = engine.create_message(
+                CreateMessageInputBuilder::default()
+                    .chat_id(chat.id)
+                    .owner_id(chat.owner_id)
+                    .resource_type(res_type)
+                    .content(
+                        serde_json::to_string(&json!({
+                            "role": "assistant",
+                            "content": last_chunk.unwrap().message,
+                        }))
+                        .unwrap(),
+                    )
+                    .build()
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+            last_chunk_cloned.message_id = Some(message.id);
+
+            yield last_chunk_cloned;
+        }))
     }
 }
