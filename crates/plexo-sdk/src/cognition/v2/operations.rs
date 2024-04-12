@@ -438,7 +438,7 @@ impl CognitionOperationsV2 for SDKEngine {
                 delta,
                 message: total_message.clone(),
                 message_id: None,
-                function_call: function_name.map(|a| a.0),
+                tool_call: function_name.map(|a| a.0),
             }
         }));
 

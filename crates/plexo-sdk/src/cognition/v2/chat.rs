@@ -26,5 +26,5 @@ pub struct ChatResponseChunk {
     pub message: String,
 
     pub message_id: Option<Uuid>,
-    pub function_call: Option<String>,
+    pub tool_call: Option<String>,
 }
