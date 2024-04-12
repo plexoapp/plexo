@@ -24,5 +24,7 @@ pub struct ChatResponse {
 pub struct ChatResponseChunk {
     pub delta: String,
     pub message: String,
+
     pub message_id: Option<Uuid>,
+    pub function_call: Option<String>,
 }

@@ -12,8 +12,9 @@ use crate::{
 };
 
 use async_openai::types::{
-    ChatCompletionFunctionsArgs, ChatCompletionRequestMessage, ChatCompletionRequestSystemMessageArgs,
-    ChatCompletionRequestUserMessageArgs, CreateChatCompletionRequestArgs,
+    ChatChoiceStream, ChatCompletionRequestMessage, ChatCompletionRequestSystemMessageArgs,
+    ChatCompletionRequestUserMessageArgs, ChatCompletionStreamResponseDelta, ChatCompletionToolArgs,
+    ChatCompletionToolType, CreateChatCompletionRequestArgs, FunctionObjectArgs,
 };
 
 use async_stream::stream;
@@ -32,7 +33,7 @@ pub trait CognitionCapabilities {
         &self,
         system_message: String,
         messages: Vec<Message>,
-    ) -> Pin<Box<dyn Stream<Item = String> + Send>>;
+    ) -> Pin<Box<dyn Stream<Item = (Option<ToolExecution>, String)> + Send>>;
 
     fn calculate_task_fingerprint(task: Task) -> String;
     fn calculate_task_suggestion_fingerprint(task_suggestion: TaskSuggestionInput) -> String;
@@ -126,7 +127,7 @@ impl CognitionCapabilities for SDKEngine {
         &self,
         system_message: String,
         messages: Vec<Message>,
-    ) -> Pin<Box<dyn Stream<Item = String> + Send>> {
+    ) -> Pin<Box<dyn Stream<Item = (Option<ToolExecution>, String)> + Send>> {
         let mut conversation_messages: Vec<ChatCompletionRequestMessage> =
             messages.iter().map(Self::message_to_chat_completion).collect();
 
@@ -148,32 +149,62 @@ impl CognitionCapabilities for SDKEngine {
             "required": ["input"],
         });
 
-        println!("create_task_function_def: {}", create_task_function_def);
-
         let request = CreateChatCompletionRequestArgs::default()
             .max_tokens(1024u16)
             .model(self.config.llm_model_name.clone())
             .messages(messages)
-            // .tools(value)
-            .functions([ChatCompletionFunctionsArgs::default()
-                .name("create_task")
-                .description("Create a task, complete the input object parameter inferred from the user's input.")
-                .parameters(create_task_function_def)
+            .tools(vec![ChatCompletionToolArgs::default()
+                .r#type(ChatCompletionToolType::Function)
+                .function(
+                    FunctionObjectArgs::default()
+                        .name("create_task")
+                        .description(
+                            "Create a task, complete the input object parameter inferred from the user's input.",
+                        )
+                        .parameters(create_task_function_def)
+                        .build()
+                        .unwrap(),
+                )
                 .build()
                 .unwrap()])
-            .function_call("auto")
             .build()
             .unwrap();
 
         let mut response = self.llm_client.chat().create_stream(request).await.unwrap();
 
+        let mut tool_name = None;
+
         Box::pin(stream! {
             while let Some(response) = response.next().await {
-                println!("response: {:?}", response);
+                // println!("response: {:?}", response);
 
-                match response.unwrap().choices.first().unwrap().delta.content.clone() {
-                    Some(content) => yield content,
-                    None => break
+                match response.unwrap().choices.first().unwrap() {
+                    ChatChoiceStream{delta: ChatCompletionStreamResponseDelta {content: Some(content), ..}, ..} => {
+                        // println!("content: {:?}", content);
+                        yield (None, content.clone());
+                    }
+
+                    ChatChoiceStream{delta: ChatCompletionStreamResponseDelta {tool_calls: Some(tool_calls), ..}, ..} => {
+                        // println!("tool_calls: {:?}", tool_calls);
+                        let tool = tool_calls.first().unwrap().function.clone();
+
+                        if let Some(name) = tool.clone().unwrap().name {
+                            tool_name = Some(name);
+                        };
+
+                        let tool_arguments = tool.unwrap().arguments.unwrap();
+
+                        yield (tool_name.clone().map(ToolExecution), tool_arguments);
+                    }
+                    ChatChoiceStream{finish_reason: Some(_finish_reason), ..} => {
+                        // println!("finish_reason: {:?}", finish_reason);
+                        break;
+                    },
+
+                    _choice => {
+                        // println!("choice: {:?}", choice);
+                        yield (None, "<UNK>".to_string());
+                    }
                 }
             }
         })
@@ -193,6 +224,8 @@ impl CognitionCapabilities for SDKEngine {
         }
     }
 }
+
+pub struct ToolExecution(pub String);
 
 #[derive(Clone, Default, JsonSchema)]
 pub struct CreateTaskLLMFunctionInput {
