@@ -1,4 +1,7 @@
-use super::operations::TaskSuggestionInput;
+use super::{
+    operations::TaskSuggestionInput,
+    v2::chat::{ChatResponseFunctionCall, ChatResponseToolCall},
+};
 
 use crate::{
     backend::engine::SDKEngine,
@@ -21,7 +24,7 @@ use async_stream::stream;
 use async_trait::async_trait;
 use schemars::{schema_for, JsonSchema};
 use serde_json::{json, Value};
-use std::pin::Pin;
+use std::{collections::HashMap, pin::Pin};
 use tokio_stream::{Stream, StreamExt};
 use uuid::Uuid;
 
@@ -33,7 +36,7 @@ pub trait CognitionCapabilities {
         &self,
         system_message: String,
         messages: Vec<Message>,
-    ) -> Pin<Box<dyn Stream<Item = (Option<ToolExecution>, String)> + Send>>;
+    ) -> Pin<Box<dyn Stream<Item = (Option<Vec<ChatResponseToolCall>>, String)> + Send>>;
 
     fn calculate_task_fingerprint(task: Task) -> String;
     fn calculate_task_suggestion_fingerprint(task_suggestion: TaskSuggestionInput) -> String;
@@ -127,7 +130,7 @@ impl CognitionCapabilities for SDKEngine {
         &self,
         system_message: String,
         messages: Vec<Message>,
-    ) -> Pin<Box<dyn Stream<Item = (Option<ToolExecution>, String)> + Send>> {
+    ) -> Pin<Box<dyn Stream<Item = (Option<Vec<ChatResponseToolCall>>, String)> + Send>> {
         let mut conversation_messages: Vec<ChatCompletionRequestMessage> =
             messages.iter().map(Self::message_to_chat_completion).collect();
 
@@ -172,29 +175,43 @@ impl CognitionCapabilities for SDKEngine {
 
         let mut response = self.llm_client.chat().create_stream(request).await.unwrap();
 
-        let mut tool_name = None;
+        // let mut tool_name = None;
+
+        let mut tool_calls = HashMap::<String, ChatResponseToolCall>::new();
+
+        // let tool_call_states: Arc<Mutex<HashMap<(i32, i32), ChatCompletionMessageToolCall>>> = Arc::new(Mutex::new(HashMap::new()));
 
         Box::pin(stream! {
             while let Some(response) = response.next().await {
-                // println!("response: {:?}", response);
-
                 match response.unwrap().choices.first().unwrap() {
                     ChatChoiceStream{delta: ChatCompletionStreamResponseDelta {content: Some(content), ..}, ..} => {
-                        // println!("content: {:?}", content);
                         yield (None, content.clone());
                     }
 
-                    ChatChoiceStream{delta: ChatCompletionStreamResponseDelta {tool_calls: Some(tool_calls), ..}, ..} => {
-                        // println!("tool_calls: {:?}", tool_calls);
-                        let tool = tool_calls.first().unwrap().function.clone();
+                    ChatChoiceStream{delta: ChatCompletionStreamResponseDelta {tool_calls: Some(calls), ..}, ..} => {
+                        for call in calls.iter() {
+                            let tool = call.function.clone().unwrap();
 
-                        if let Some(name) = tool.clone().unwrap().name {
-                            tool_name = Some(name);
-                        };
+                            if let Some(name) = tool.clone().name {
+                               let  _tool_name = Some(name);
+                            }
 
-                        let tool_arguments = tool.unwrap().arguments.unwrap();
+                            if tool_calls.contains_key(call.id.clone().unwrap().as_str()) {
+                                continue;
+                            }
 
-                        yield (tool_name.clone().map(ToolExecution), tool_arguments);
+                            let tool_arguments = tool.arguments.clone().unwrap();
+
+                            tool_calls.insert(call.id.clone().unwrap(), ChatResponseToolCall {
+                                id: call.id.clone(),
+                                function: Some(ChatResponseFunctionCall {
+                                    name: tool.name.clone(),
+                                    arguments: tool.arguments.clone(),
+                                }),
+                            });
+
+                            yield (Some(Vec::from_iter(tool_calls.values()).into_iter().cloned().collect()), tool_arguments);
+                        }
                     }
                     ChatChoiceStream{finish_reason: Some(_finish_reason), ..} => {
                         // println!("finish_reason: {:?}", finish_reason);
@@ -225,7 +242,7 @@ impl CognitionCapabilities for SDKEngine {
     }
 }
 
-pub struct ToolExecution(pub String);
+// pub struct ToolExecution(pub String);
 
 #[derive(Clone, Default, JsonSchema)]
 pub struct CreateTaskLLMFunctionInput {

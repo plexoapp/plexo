@@ -22,9 +22,25 @@ pub struct ChatResponse {
 #[derive(Debug, Default, Builder, Object, SimpleObject, Deserialize, Clone)]
 #[builder(pattern = "owned")]
 pub struct ChatResponseChunk {
-    pub delta: String,
+    pub message_delta: String,
     pub message: String,
 
     pub message_id: Option<Uuid>,
-    pub tool_call: Option<String>,
+
+    pub tool_calls: Option<Vec<ChatResponseToolCall>>,
+}
+
+#[derive(Debug, Default, Builder, Object, SimpleObject, Deserialize, Clone, Serialize)]
+#[builder(pattern = "owned")]
+pub struct ChatResponseToolCall {
+    pub id: Option<String>,
+    // pub r#type: Option<ChatCompletionToolType>, (actually always 'function')
+    pub function: Option<ChatResponseFunctionCall>,
+}
+
+#[derive(Debug, Default, Builder, Object, SimpleObject, Deserialize, Clone, Serialize)]
+#[builder(pattern = "owned")]
+pub struct ChatResponseFunctionCall {
+    pub name: Option<String>,
+    pub arguments: Option<String>,
 }

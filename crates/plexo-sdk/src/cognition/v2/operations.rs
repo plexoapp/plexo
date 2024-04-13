@@ -431,14 +431,14 @@ impl CognitionOperationsV2 for SDKEngine {
 
         let mut total_message = String::new();
 
-        let mut mapped_response = Box::pin(response.map(move |(function_name, delta)| {
+        let mut mapped_response = Box::pin(response.map(move |(tool_calls, delta)| {
             total_message += &delta;
 
             ChatResponseChunk {
-                delta,
+                message_delta: delta,
                 message: total_message.clone(),
                 message_id: None,
-                tool_call: function_name.map(|a| a.0),
+                tool_calls,
             }
         }));
 
@@ -464,6 +464,7 @@ impl CognitionOperationsV2 for SDKEngine {
                         serde_json::to_string(&json!({
                             "role": "assistant",
                             "content": last_chunk.unwrap().message,
+                            "tool_calls": last_chunk_cloned.tool_calls,
                         }))
                         .unwrap(),
                     )
