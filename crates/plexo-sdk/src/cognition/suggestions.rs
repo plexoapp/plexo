@@ -265,9 +265,10 @@ impl CognitionCapabilities for SDKEngine {
                         break;
                     },
 
-                    _choice => {
-                        // println!("choice: {:?}", choice);
-                        yield (None, "<UNK>".to_string());
+                    choice => {
+                        println!("choice: {:?}", choice);
+                        continue;
+                        // yield (None, "<UNK>".to_string());
                     }
                 }
             }
