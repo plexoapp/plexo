@@ -34,7 +34,7 @@ pub struct ChatResponseChunk {
 #[builder(pattern = "owned")]
 pub struct ChatResponseToolCall {
     pub id: Option<String>,
-    // pub r#type: Option<ChatCompletionToolType>, (actually always 'function')
+    pub r#type: Option<String>, // (actually always 'function')
     pub function: Option<ChatResponseFunctionCall>,
 }
 

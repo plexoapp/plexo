@@ -455,6 +455,9 @@ impl CognitionOperationsV2 for SDKEngine {
 
             let mut last_chunk_cloned = last_chunk.clone().unwrap();
 
+
+            println!("last_chunk_cloned: {:?}", last_chunk_cloned);
+
             let message = engine.create_message(
                 CreateMessageInputBuilder::default()
                     .chat_id(chat.id)

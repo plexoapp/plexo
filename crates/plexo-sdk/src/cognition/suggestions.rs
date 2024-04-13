@@ -23,11 +23,13 @@ use async_openai::types::{
 use async_stream::stream;
 use async_trait::async_trait;
 use schemars::{schema_for, JsonSchema};
+
 use serde_json::{json, Value};
-use std::{collections::HashMap, pin::Pin};
+use std::{collections::HashMap, pin::Pin, sync::Arc};
 use tokio_stream::{Stream, StreamExt};
 use uuid::Uuid;
 
+use tokio::sync::Mutex;
 #[async_trait]
 pub trait CognitionCapabilities {
     async fn chat_completion(&self, system_message: String, user_message: String) -> String;
@@ -177,40 +179,85 @@ impl CognitionCapabilities for SDKEngine {
 
         // let mut tool_name = None;
 
-        let mut tool_calls = HashMap::<String, ChatResponseToolCall>::new();
+        let tool_calls = Arc::new(Mutex::new(HashMap::<String, ChatResponseToolCall>::new()));
 
         // let tool_call_states: Arc<Mutex<HashMap<(i32, i32), ChatCompletionMessageToolCall>>> = Arc::new(Mutex::new(HashMap::new()));
 
+        // tool_calls.en
         Box::pin(stream! {
             while let Some(response) = response.next().await {
-                match response.unwrap().choices.first().unwrap() {
+                match response.unwrap().choices.first().unwrap() { // TODO: change this .first() to accept many choices
                     ChatChoiceStream{delta: ChatCompletionStreamResponseDelta {content: Some(content), ..}, ..} => {
                         yield (None, content.clone());
                     }
 
                     ChatChoiceStream{delta: ChatCompletionStreamResponseDelta {tool_calls: Some(calls), ..}, ..} => {
-                        for call in calls.iter() {
-                            let tool = call.function.clone().unwrap();
+                        for (index, call) in calls.iter().enumerate() {
+                            // println!("index: {}", index);
+                            // let tool = call.function.clone().unwrap();
 
-                            if let Some(name) = tool.clone().name {
-                               let  _tool_name = Some(name);
-                            }
+                            // if let Some(name) = tool.clone().name {
+                            //    let  _tool_name = Some(name);
+                            // }
 
-                            if tool_calls.contains_key(call.id.clone().unwrap().as_str()) {
-                                continue;
-                            }
+                            let mut tool_calls = tool_calls.lock().await;
 
-                            let tool_arguments = tool.arguments.clone().unwrap();
+                            // let mut states_lock = states.lock().await;
 
-                            tool_calls.insert(call.id.clone().unwrap(), ChatResponseToolCall {
-                                id: call.id.clone(),
-                                function: Some(ChatResponseFunctionCall {
-                                    name: tool.name.clone(),
-                                    arguments: tool.arguments.clone(),
-                                }),
+
+                            let state = tool_calls.entry(format!("{}", index)).or_insert_with(|| {
+                                ChatResponseToolCall {
+                                    id: call.id.clone(),
+                                    // r#type: call.r#type.clone().map(|t| serde_json::to_string(&t).unwrap()),
+                                    // r#type: Some("function".to_string()), // TODO: Improve this
+                                    r#type: call.r#type.clone().map(|t| serde_json::to_value(t).unwrap_or(Value::String("function".to_string())).as_str().unwrap().to_string()),
+                                    function: Some(ChatResponseFunctionCall {
+                                        name: call.function.clone().unwrap().name.clone(),
+                                        arguments: call.function.clone().unwrap().arguments.clone(),
+                                    }),
+                                }
                             });
 
-                            yield (Some(Vec::from_iter(tool_calls.values()).into_iter().cloned().collect()), tool_arguments);
+                            if let Some(arguments) = call
+                                .function
+                                .as_ref()
+                                .and_then(|f| f.arguments.as_ref())
+                            {
+                                state.function.as_mut().unwrap().arguments.as_mut().unwrap().push_str(arguments);
+
+                                yield (Some(Vec::from_iter(tool_calls.values()).into_iter().cloned().collect()), arguments.clone());
+                            }
+
+                            // if tool_calls.contains_key(call.id.clone().unwrap().as_str()) {
+                            //     let value_in_tool_calls = tool_calls.get_mut(call.id.clone().unwrap().as_str()).unwrap();
+
+                            //     value_in_tool_calls.id;
+
+                            //     // value_in_tool_calls.function.as_mut().and_then(|f| {
+                            //     //     if f.arguments.is_none() {
+                            //     //         value_in_tool_calls.function = Some(ChatResponseFunctionCall {
+                            //     //             name: tool.name.clone(),
+                            //     //             arguments: tool.arguments.clone(),
+                            //     //         });
+                            //     //     }
+
+                            //     //     Some(())
+                            //     // });
+
+                            //     continue;
+                            // }
+
+                            // let tool_arguments = tool.arguments.clone().unwrap();
+
+                            // tool_calls.insert(call.id.clone().unwrap(), ChatResponseToolCall {
+                            //     id: call.id.clone(),
+                            //     function: Some(ChatResponseFunctionCall {
+                            //         name: tool.name.clone(),
+                            //         arguments: tool.arguments.clone(),
+                            //     }),
+                            // });
+
+
                         }
                     }
                     ChatChoiceStream{finish_reason: Some(_finish_reason), ..} => {
