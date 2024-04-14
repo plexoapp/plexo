@@ -326,6 +326,20 @@ impl MemberCrudOperations for SDKEngine {
     }
 
     async fn delete_member(&self, id: Uuid) -> Result<Member, SDKError> {
+        let mut tx = self.db_pool.as_ref().begin().await?;
+
+        sqlx::query!(
+            r#"
+            UPDATE tasks
+            SET
+                lead_id = NULL
+            WHERE lead_id = $1
+            "#,
+            id,
+        )
+        .execute(&mut *tx)
+        .await?;
+
         let member_info = sqlx::query!(
             r#"
             DELETE FROM members WHERE id = $1
@@ -333,8 +347,10 @@ impl MemberCrudOperations for SDKEngine {
             "#,
             id
         )
-        .fetch_one(self.db_pool.as_ref())
+        .fetch_one(&mut *tx)
         .await?;
+
+        tx.commit().await?;
 
         let member = Member {
             id: member_info.id,
