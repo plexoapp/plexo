@@ -1,6 +1,9 @@
 use std::{env::var, pin::Pin, str::FromStr, time::Duration};
 
-use async_openai::{config::OpenAIConfig, Client};
+use async_openai::{
+    config::{OpenAIConfig, OPENAI_API_BASE},
+    Client,
+};
 use sqlx::{
     postgres::{PgListener, PgPoolOptions},
     Pool, Postgres,
@@ -27,6 +30,7 @@ pub struct SDKConfig {
     pub database_url: String,
     pub llm_api_key: String,
     pub llm_model_name: String,
+    pub llm_api_base: String,
 }
 
 impl SDKConfig {
@@ -34,11 +38,13 @@ impl SDKConfig {
         let database_url = var("DATABASE_URL").unwrap();
         let llm_api_key = var("OPENAI_API_KEY").unwrap();
         let llm_model_name = var("OPENAI_MODEL_NAME").unwrap_or("gpt-3.5-turbo-0125".to_string());
+        let llm_api_base = var("OPENAI_API_BASE").unwrap_or(OPENAI_API_BASE.to_string());
 
         SDKConfig {
             database_url,
             llm_api_key,
             llm_model_name,
+            llm_api_base,
         }
     }
 }
@@ -61,7 +67,9 @@ impl SDKEngine {
             .connect(config.database_url.as_str())
             .await?;
 
-        let llm_config = OpenAIConfig::default().with_api_key(config.llm_api_key.clone());
+        let llm_config = OpenAIConfig::default()
+            // .with_api_base(config.llm_api_base.clone())
+            .with_api_key(config.llm_api_key.clone());
 
         let llm_client = Box::new(Client::with_config(llm_config));
 
