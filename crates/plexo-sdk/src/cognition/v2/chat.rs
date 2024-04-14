@@ -22,7 +22,7 @@ pub struct ChatResponse {
 #[derive(Debug, Default, Builder, Object, SimpleObject, Deserialize, Clone)]
 #[builder(pattern = "owned")]
 pub struct ChatResponseChunk {
-    pub message_delta: String,
+    pub delta: String,
     pub message: String,
 
     pub message_id: Option<Uuid>,
