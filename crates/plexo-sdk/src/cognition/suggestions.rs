@@ -144,12 +144,12 @@ impl CognitionCapabilities for SDKEngine {
 
         messages.append(&mut conversation_messages);
 
-        let create_task_input_schema = schema_for!(CreateTaskLLMFunctionInput);
+        let create_many_task_input_schema = schema_for!(Vec<CreateTaskLLMFunctionInput>);
 
-        let create_task_function_def = json!({
+        let create_many_task_function_def = json!({
             "type": "object",
             "properties": {
-                "input": &create_task_input_schema,
+                "input": &create_many_task_input_schema,
             },
             "required": ["input"],
         });
@@ -162,11 +162,11 @@ impl CognitionCapabilities for SDKEngine {
                 .r#type(ChatCompletionToolType::Function)
                 .function(
                     FunctionObjectArgs::default()
-                        .name("create_task")
+                        .name("create_many_tasks")
                         .description(
-                            "Create a task, complete the input object parameter inferred from the user's input.",
+                            "Create a list of tasks in the database. The function takes a list of CreateTaskLLMFunctionInput as input and returns a list of Task created.".to_string(),
                         )
-                        .parameters(create_task_function_def)
+                        .parameters(create_many_task_function_def)
                         .build()
                         .unwrap(),
                 )
@@ -174,6 +174,8 @@ impl CognitionCapabilities for SDKEngine {
                 .unwrap()])
             .build()
             .unwrap();
+
+        // println!("request: {}", serde_json::to_string(&request).unwrap());
 
         let mut response = self.llm_client.chat().create_stream(request).await.unwrap();
 
@@ -282,7 +284,7 @@ impl CognitionCapabilities for SDKEngine {
             Value::Object(obj) => match obj.get("role").unwrap().as_str().unwrap() {
                 "user" => ChatCompletionRequestMessage::User(serde_json::from_value(val).unwrap()),
                 "assistant" => ChatCompletionRequestMessage::Assistant(serde_json::from_value(val).unwrap()),
-                "tool" | "function" => todo!(),
+                "tool" => ChatCompletionRequestMessage::Tool(serde_json::from_value(val).unwrap()),
                 _ => todo!(),
             },
             _ => todo!(),

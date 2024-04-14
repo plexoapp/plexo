@@ -400,7 +400,7 @@ impl CognitionOperationsV2 for SDKEngine {
             .get_messages(
                 GetMessagesInputBuilder::default()
                     .sort_by("created_at".to_string())
-                    .limit(50)
+                    .limit(20)
                     .sort_order(SortOrder::Asc)
                     .filter(GetMessagesWhereBuilder::default().chat_id(chat.id).build().unwrap())
                     .build()
@@ -435,7 +435,7 @@ impl CognitionOperationsV2 for SDKEngine {
             total_message += &delta;
 
             ChatResponseChunk {
-                message_delta: delta,
+                delta,
                 message: total_message.clone(),
                 message_id: None,
                 tool_calls,
@@ -454,19 +454,24 @@ impl CognitionOperationsV2 for SDKEngine {
             }
 
             let mut last_chunk_cloned = last_chunk.clone().unwrap();
+            let is_tool_call = last_chunk_cloned.tool_calls.is_some();
 
+            let content = if is_tool_call {
+                None
+            } else {
+                Some(last_chunk.unwrap().message)
+            };
 
-            println!("last_chunk_cloned: {:?}", last_chunk_cloned);
 
             let message = engine.create_message(
                 CreateMessageInputBuilder::default()
                     .chat_id(chat.id)
                     .owner_id(chat.owner_id)
-                    .resource_type(res_type)
+                    .resource_type(res_type.clone())
                     .content(
                         serde_json::to_string(&json!({
                             "role": "assistant",
-                            "content": last_chunk.unwrap().message,
+                            "content": content,
                             "tool_calls": last_chunk_cloned.tool_calls,
                         }))
                         .unwrap(),
@@ -476,6 +481,33 @@ impl CognitionOperationsV2 for SDKEngine {
             )
             .await
             .unwrap();
+
+        if is_tool_call {
+            for tool_call in last_chunk_cloned.clone().tool_calls.unwrap() {
+                    let res_type = res_type.clone();
+
+                    engine.create_message(
+                        CreateMessageInputBuilder::default()
+                            .chat_id(chat.id)
+                            .owner_id(chat.owner_id)
+                            .resource_type(res_type)
+                            .content(
+                                serde_json::to_string(&json!({
+                                    "role": "tool",
+                                    "content": "{}",
+                                    "tool_call_id": tool_call.id,
+                                }))
+                                .unwrap(),
+                            )
+                            .build()
+                            .unwrap(),
+                    )
+                    .await
+                    .unwrap();
+
+                    // println!("tool call message: {:?}", message);
+                }
+            }
 
             last_chunk_cloned.message_id = Some(message.id);
 
