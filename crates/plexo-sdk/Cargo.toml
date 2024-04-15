@@ -1,6 +1,6 @@
 [package]
 name = "plexo-sdk"
-version = "0.5.4"
+version = "0.5.5"
 edition = "2021"
 description = "Plexo SDK"
 license = "MIT OR Apache-2.0"
