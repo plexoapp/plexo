@@ -2,6 +2,7 @@ use async_graphql::{Enum, SimpleObject};
 use chrono::{DateTime, Utc};
 
 use poem_openapi::Object;
+use schemars::JsonSchema;
 use strum_macros::{Display, EnumString};
 use uuid::Uuid;
 
@@ -30,7 +31,19 @@ pub struct Task {
 }
 
 #[derive(
-    Debug, Enum, OpenApiEnum, Copy, Clone, Default, Display, EnumString, Deserialize, Serialize, Eq, PartialEq,
+    Debug,
+    Enum,
+    OpenApiEnum,
+    Copy,
+    Clone,
+    Default,
+    Display,
+    EnumString,
+    Deserialize,
+    Serialize,
+    Eq,
+    PartialEq,
+    JsonSchema,
 )]
 
 pub enum TaskStatus {
@@ -45,7 +58,19 @@ pub enum TaskStatus {
 }
 
 #[derive(
-    Debug, Enum, OpenApiEnum, Copy, Clone, Default, Display, EnumString, Deserialize, Serialize, Eq, PartialEq,
+    Debug,
+    Enum,
+    OpenApiEnum,
+    Copy,
+    Clone,
+    Default,
+    Display,
+    EnumString,
+    Deserialize,
+    Serialize,
+    Eq,
+    PartialEq,
+    JsonSchema,
 )]
 
 pub enum TaskPriority {

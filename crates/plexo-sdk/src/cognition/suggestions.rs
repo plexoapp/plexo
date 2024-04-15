@@ -1,4 +1,7 @@
-use super::operations::TaskSuggestionInput;
+use super::{
+    operations::TaskSuggestionInput,
+    v2::chat::{ChatResponseFunctionCall, ChatResponseToolCall},
+};
 
 use crate::{
     backend::engine::SDKEngine,
@@ -6,23 +9,27 @@ use crate::{
         messages::message::Message,
         tasks::{
             operations::{GetTasksInputBuilder, TaskCrudOperations},
-            task::Task,
+            task::{Task, TaskPriority, TaskStatus},
         },
     },
 };
 
 use async_openai::types::{
-    ChatCompletionRequestMessage, ChatCompletionRequestSystemMessageArgs, ChatCompletionRequestUserMessageArgs,
-    CreateChatCompletionRequestArgs,
+    ChatChoiceStream, ChatCompletionRequestMessage, ChatCompletionRequestSystemMessageArgs,
+    ChatCompletionRequestUserMessageArgs, ChatCompletionStreamResponseDelta, ChatCompletionToolArgs,
+    ChatCompletionToolType, CreateChatCompletionRequestArgs, FunctionObjectArgs,
 };
 
 use async_stream::stream;
 use async_trait::async_trait;
-use serde_json::Value;
-use std::pin::Pin;
+use schemars::{schema_for, JsonSchema};
+
+use serde_json::{json, Value};
+use std::{collections::HashMap, pin::Pin, sync::Arc};
 use tokio_stream::{Stream, StreamExt};
 use uuid::Uuid;
 
+use tokio::sync::Mutex;
 #[async_trait]
 pub trait CognitionCapabilities {
     async fn chat_completion(&self, system_message: String, user_message: String) -> String;
@@ -31,7 +38,7 @@ pub trait CognitionCapabilities {
         &self,
         system_message: String,
         messages: Vec<Message>,
-    ) -> Pin<Box<dyn Stream<Item = String> + Send>>;
+    ) -> Pin<Box<dyn Stream<Item = (Option<Vec<ChatResponseToolCall>>, String)> + Send>>;
 
     fn calculate_task_fingerprint(task: Task) -> String;
     fn calculate_task_suggestion_fingerprint(task_suggestion: TaskSuggestionInput) -> String;
@@ -125,7 +132,7 @@ impl CognitionCapabilities for SDKEngine {
         &self,
         system_message: String,
         messages: Vec<Message>,
-    ) -> Pin<Box<dyn Stream<Item = String> + Send>> {
+    ) -> Pin<Box<dyn Stream<Item = (Option<Vec<ChatResponseToolCall>>, String)> + Send>> {
         let mut conversation_messages: Vec<ChatCompletionRequestMessage> =
             messages.iter().map(Self::message_to_chat_completion).collect();
 
@@ -137,20 +144,83 @@ impl CognitionCapabilities for SDKEngine {
 
         messages.append(&mut conversation_messages);
 
+        let create_many_task_input_schema = schema_for!(Vec<CreateTaskLLMFunctionInput>);
+
+        let create_many_task_function_def = json!({
+            "type": "object",
+            "properties": {
+                "input": &create_many_task_input_schema,
+            },
+            "required": ["input"],
+        });
+
         let request = CreateChatCompletionRequestArgs::default()
             .max_tokens(1024u16)
             .model(self.config.llm_model_name.clone())
             .messages(messages)
+            .tools(vec![ChatCompletionToolArgs::default()
+                .r#type(ChatCompletionToolType::Function)
+                .function(
+                    FunctionObjectArgs::default()
+                        .name("create_many_tasks")
+                        .description(
+                            "Create a list of tasks in the database. The function takes a list of CreateTaskLLMFunctionInput as input and returns a list of Task created.".to_string(),
+                        )
+                        .parameters(create_many_task_function_def)
+                        .build()
+                        .unwrap(),
+                )
+                .build()
+                .unwrap()])
             .build()
             .unwrap();
 
         let mut response = self.llm_client.chat().create_stream(request).await.unwrap();
 
+        let tool_calls = Arc::new(Mutex::new(HashMap::<String, ChatResponseToolCall>::new()));
+
         Box::pin(stream! {
             while let Some(response) = response.next().await {
-                match response.unwrap().choices.first().unwrap().delta.content.clone() {
-                    Some(content) => yield content,
-                    None => break
+                match response.unwrap().choices.first().unwrap() { // TODO: change this .first() to accept many choices
+                    ChatChoiceStream{delta: ChatCompletionStreamResponseDelta {content: Some(content), ..}, ..} => {
+                        yield (None, content.clone());
+                    },
+                    ChatChoiceStream{delta: ChatCompletionStreamResponseDelta {tool_calls: Some(calls), ..}, ..} => {
+                        for (index, call) in calls.iter().enumerate() {
+                            let mut tool_calls = tool_calls.lock().await;
+
+                            let state = tool_calls.entry(format!("{}", index)).or_insert_with(|| {
+                                ChatResponseToolCall {
+                                    id: call.id.clone(),
+                                    // r#type: call.r#type.clone().map(|t| serde_json::to_string(&t).unwrap()),
+                                    // r#type: Some("function".to_string()), // TODO: Improve this
+                                    r#type: call.r#type.clone().map(|t| serde_json::to_value(t).unwrap_or(Value::String("function".to_string())).as_str().unwrap().to_string()),
+                                    function: Some(ChatResponseFunctionCall {
+                                        name: call.function.clone().unwrap().name.clone(),
+                                        arguments: call.function.clone().unwrap().arguments.clone(),
+                                    }),
+                                }
+                            });
+
+                            if let Some(arguments) = call
+                                .function
+                                .as_ref()
+                                .and_then(|f| f.arguments.as_ref())
+                            {
+                                state.function.as_mut().unwrap().arguments.as_mut().unwrap().push_str(arguments);
+
+                                yield (Some(Vec::from_iter(tool_calls.values()).into_iter().cloned().collect()), arguments.clone());
+                            }
+
+                        }
+                    },
+                    ChatChoiceStream{finish_reason: Some(_finish_reason), ..} => {
+                        break;
+                    },
+                    choice => {
+                        println!("choice: {:?}", choice);
+                        continue;
+                    }
                 }
             }
         })
@@ -163,10 +233,29 @@ impl CognitionCapabilities for SDKEngine {
             Value::Object(obj) => match obj.get("role").unwrap().as_str().unwrap() {
                 "user" => ChatCompletionRequestMessage::User(serde_json::from_value(val).unwrap()),
                 "assistant" => ChatCompletionRequestMessage::Assistant(serde_json::from_value(val).unwrap()),
-                "tool" | "function" => todo!(),
+                "tool" => ChatCompletionRequestMessage::Tool(serde_json::from_value(val).unwrap()),
                 _ => todo!(),
             },
             _ => todo!(),
         }
     }
+}
+
+// pub struct ToolExecution(pub String);
+
+#[derive(Clone, Default, JsonSchema)]
+pub struct CreateTaskLLMFunctionInput {
+    pub title: String,
+
+    pub status: Option<TaskStatus>,
+    pub priority: Option<TaskPriority>,
+    pub description: Option<String>,
+    pub due_date: Option<String>,
+    pub project_id: Option<String>,
+    pub lead_id: Option<String>,
+    pub parent_id: Option<String>,
+    pub labels: Option<Vec<String>>,
+    pub assignees: Option<Vec<String>>,
+    // pub subtasks: Option<Vec<CreateTaskInput>>,
+    // pub assets: Option<Vec<String>>,
 }

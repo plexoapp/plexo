@@ -7,13 +7,17 @@ Current Time:
 {{ self::current_time() }}
 
 
-Information About the Project:
+Current Members Context:
+{% for member in members %}
+    {{- self::calculate_member_fingerprint(member)|safe }}
 
+{% endfor %}
+
+Information About the Project:
 {{ self::calculate_project_fingerprint(project)|safe }}
 
 
 Current Tasks Context:
-
 {% for task in tasks %}
     {{- self::calculate_task_fingerprint(task)|safe }}
 
