@@ -130,6 +130,7 @@ pub struct ProjectSuggestionTemplate {
 #[template(path = "project_related_chat.md.jinja", ext = "plain")]
 pub struct ProjectRelatedChatTemplate {
     project: Project,
+    members: Vec<Member>,
     tasks: Vec<Task>,
 }
 
@@ -157,7 +158,7 @@ impl CognitionOperationsV2 for SDKEngine {
                         GetTasksInputBuilder::default()
                             .filter(GetTasksWhereBuilder::default().project_id(project_id).build().unwrap())
                             .sort_by("created_at".to_string())
-                            .sort_order(SortOrder::Asc)
+                            .sort_order(SortOrder::Desc)
                             .limit(10)
                             .build()
                             .ok(),
@@ -171,7 +172,7 @@ impl CognitionOperationsV2 for SDKEngine {
                 self.get_tasks(
                     GetTasksInputBuilder::default()
                         .sort_by("created_at".to_string())
-                        .sort_order(SortOrder::Asc)
+                        .sort_order(SortOrder::Desc)
                         .limit(10)
                         .build()
                         .ok(),
@@ -273,7 +274,7 @@ impl CognitionOperationsV2 for SDKEngine {
                 GetProjectsInputBuilder::default()
                     .limit(10)
                     .sort_by("created_at".to_string())
-                    .sort_order(SortOrder::Asc)
+                    .sort_order(SortOrder::Desc)
                     .build()
                     .unwrap(),
             )
@@ -327,14 +328,31 @@ impl CognitionOperationsV2 for SDKEngine {
                                     .unwrap(),
                             )
                             .sort_by("created_at".to_string())
-                            .sort_order(SortOrder::Asc)
+                            .sort_order(SortOrder::Desc)
                             .limit(10)
                             .build()
                             .ok(),
                     )
                     .await?;
 
-                ProjectRelatedChatTemplate { project, tasks }.render().unwrap()
+                let members = self
+                    .get_members(
+                        GetMembersInputBuilder::default()
+                            .limit(10)
+                            .sort_by("created_at".to_string())
+                            .sort_order(SortOrder::Desc)
+                            .build()
+                            .unwrap(),
+                    )
+                    .await?;
+
+                ProjectRelatedChatTemplate {
+                    project,
+                    tasks,
+                    members,
+                }
+                .render()
+                .unwrap()
             }
             "organization" => {
                 let organization = self.get_organization().await?.unwrap();
@@ -344,7 +362,7 @@ impl CognitionOperationsV2 for SDKEngine {
                         GetProjectsInputBuilder::default()
                             .limit(50)
                             .sort_by("updated_at".to_string())
-                            .sort_order(SortOrder::Asc)
+                            .sort_order(SortOrder::Desc)
                             .build()
                             .unwrap(),
                     )
@@ -355,7 +373,7 @@ impl CognitionOperationsV2 for SDKEngine {
                         GetTasksInputBuilder::default()
                             .limit(50)
                             .sort_by("updated_at".to_string())
-                            .sort_order(SortOrder::Asc)
+                            .sort_order(SortOrder::Desc)
                             .build()
                             .unwrap(),
                     ))
@@ -366,7 +384,7 @@ impl CognitionOperationsV2 for SDKEngine {
                         GetMembersInputBuilder::default()
                             .limit(50)
                             .sort_by("updated_at".to_string())
-                            .sort_order(SortOrder::Asc)
+                            .sort_order(SortOrder::Desc)
                             .build()
                             .unwrap(),
                     )
@@ -377,7 +395,7 @@ impl CognitionOperationsV2 for SDKEngine {
                         GetTeamsInputBuilder::default()
                             .limit(50)
                             .sort_by("updated_at".to_string())
-                            .sort_order(SortOrder::Asc)
+                            .sort_order(SortOrder::Desc)
                             .build()
                             .unwrap(),
                     )
@@ -401,7 +419,6 @@ impl CognitionOperationsV2 for SDKEngine {
                 GetMessagesInputBuilder::default()
                     .sort_by("created_at".to_string())
                     .limit(20)
-                    .sort_order(SortOrder::Asc)
                     .filter(GetMessagesWhereBuilder::default().chat_id(chat.id).build().unwrap())
                     .build()
                     .unwrap(),
