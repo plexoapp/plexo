@@ -175,37 +175,19 @@ impl CognitionCapabilities for SDKEngine {
             .build()
             .unwrap();
 
-        // println!("request: {}", serde_json::to_string(&request).unwrap());
-
         let mut response = self.llm_client.chat().create_stream(request).await.unwrap();
-
-        // let mut tool_name = None;
 
         let tool_calls = Arc::new(Mutex::new(HashMap::<String, ChatResponseToolCall>::new()));
 
-        // let tool_call_states: Arc<Mutex<HashMap<(i32, i32), ChatCompletionMessageToolCall>>> = Arc::new(Mutex::new(HashMap::new()));
-
-        // tool_calls.en
         Box::pin(stream! {
             while let Some(response) = response.next().await {
                 match response.unwrap().choices.first().unwrap() { // TODO: change this .first() to accept many choices
                     ChatChoiceStream{delta: ChatCompletionStreamResponseDelta {content: Some(content), ..}, ..} => {
                         yield (None, content.clone());
-                    }
-
+                    },
                     ChatChoiceStream{delta: ChatCompletionStreamResponseDelta {tool_calls: Some(calls), ..}, ..} => {
                         for (index, call) in calls.iter().enumerate() {
-                            // println!("index: {}", index);
-                            // let tool = call.function.clone().unwrap();
-
-                            // if let Some(name) = tool.clone().name {
-                            //    let  _tool_name = Some(name);
-                            // }
-
                             let mut tool_calls = tool_calls.lock().await;
-
-                            // let mut states_lock = states.lock().await;
-
 
                             let state = tool_calls.entry(format!("{}", index)).or_insert_with(|| {
                                 ChatResponseToolCall {
@@ -230,47 +212,14 @@ impl CognitionCapabilities for SDKEngine {
                                 yield (Some(Vec::from_iter(tool_calls.values()).into_iter().cloned().collect()), arguments.clone());
                             }
 
-                            // if tool_calls.contains_key(call.id.clone().unwrap().as_str()) {
-                            //     let value_in_tool_calls = tool_calls.get_mut(call.id.clone().unwrap().as_str()).unwrap();
-
-                            //     value_in_tool_calls.id;
-
-                            //     // value_in_tool_calls.function.as_mut().and_then(|f| {
-                            //     //     if f.arguments.is_none() {
-                            //     //         value_in_tool_calls.function = Some(ChatResponseFunctionCall {
-                            //     //             name: tool.name.clone(),
-                            //     //             arguments: tool.arguments.clone(),
-                            //     //         });
-                            //     //     }
-
-                            //     //     Some(())
-                            //     // });
-
-                            //     continue;
-                            // }
-
-                            // let tool_arguments = tool.arguments.clone().unwrap();
-
-                            // tool_calls.insert(call.id.clone().unwrap(), ChatResponseToolCall {
-                            //     id: call.id.clone(),
-                            //     function: Some(ChatResponseFunctionCall {
-                            //         name: tool.name.clone(),
-                            //         arguments: tool.arguments.clone(),
-                            //     }),
-                            // });
-
-
                         }
-                    }
+                    },
                     ChatChoiceStream{finish_reason: Some(_finish_reason), ..} => {
-                        // println!("finish_reason: {:?}", finish_reason);
                         break;
                     },
-
                     choice => {
                         println!("choice: {:?}", choice);
                         continue;
-                        // yield (None, "<UNK>".to_string());
                     }
                 }
             }

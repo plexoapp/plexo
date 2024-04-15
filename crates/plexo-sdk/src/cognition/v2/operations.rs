@@ -329,7 +329,7 @@ impl CognitionOperationsV2 for SDKEngine {
                             )
                             .sort_by("created_at".to_string())
                             .sort_order(SortOrder::Desc)
-                            .limit(10)
+                            .limit(50)
                             .build()
                             .ok(),
                     )
