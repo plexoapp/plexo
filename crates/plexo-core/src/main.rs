@@ -33,34 +33,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let graphql_schema = core.graphql_api_schema();
 
-    // let api_prefix = "/v1/api";
-
-    // let openapi_server = format!("{}{}", *DOMAIN, api_prefix);
-
-    // let api_service = OpenApiService::new(PlexoOpenAPI::new(core.clone()), "Plexo Open API", "1.0").server(openapi_server);
-
-    // let spec_json_handler = api_service.spec_endpoint();
-    // let spec_yaml_handler = api_service.spec_endpoint_yaml();
-
-    // let swagger_ui = api_service.swagger_ui();
-
     let app = Route::new()
-        // .nest(api_prefix, api_service)
-        // .nest("/swagger", swagger_ui)
-        // .at("/openapi.json", get(spec_json_handler))
-        // .at("/openapi.yaml", get(spec_yaml_handler))
-        // .nest("/", static_page)
-        // Non authenticated routes
         .at("/auth/email/login", post(email_basic_login_handler))
-        // .at("/auth/email/register", post(email_basic_register_handler))
-        //
         .at("/auth/github", get(github_sign_in_handler))
         .at("/auth/github/callback", get(github_callback_handler))
-        //
         .at("/auth/logout", get(logout_handler))
-        //
         .at("/version", get(version_handler))
-        //
         .at("/playground", get(graphiq_handler))
         .at("/graphql", post(graphql_handler))
         .at("/graphql/ws", get(ws_switch_handler));
