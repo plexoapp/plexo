@@ -2,3 +2,5 @@ target
 .DS_Store
 .env
 .vscode
+
+Secrets.toml
