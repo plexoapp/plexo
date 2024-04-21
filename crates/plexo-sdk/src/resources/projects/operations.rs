@@ -424,6 +424,16 @@ impl ProjectCrudOperations for SDKEngine {
         .execute(&mut *tx)
         .await?;
 
+        sqlx::query!(
+            r#"
+                DELETE FROM teams_by_projects
+                WHERE project_id = $1
+                "#,
+            id,
+        )
+        .execute(&mut *tx)
+        .await?;
+
         let project_info = sqlx::query!(
             r#"
             DELETE FROM projects WHERE id = $1

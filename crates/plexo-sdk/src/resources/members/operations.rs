@@ -340,6 +340,38 @@ impl MemberCrudOperations for SDKEngine {
         .execute(&mut *tx)
         .await?;
 
+        sqlx::query!(
+            r#"
+            UPDATE projects
+            SET
+                lead_id = NULL
+            WHERE lead_id = $1
+            "#,
+            id,
+        )
+        .execute(&mut *tx)
+        .await?;
+
+        sqlx::query!(
+            r#"
+                DELETE FROM members_by_projects
+                WHERE member_id = $1
+                "#,
+            id,
+        )
+        .execute(&mut *tx)
+        .await?;
+
+        sqlx::query!(
+            r#"
+                DELETE FROM members_by_teams
+                WHERE member_id = $1
+                "#,
+            id,
+        )
+        .execute(&mut *tx)
+        .await?;
+
         let member_info = sqlx::query!(
             r#"
             DELETE FROM members WHERE id = $1

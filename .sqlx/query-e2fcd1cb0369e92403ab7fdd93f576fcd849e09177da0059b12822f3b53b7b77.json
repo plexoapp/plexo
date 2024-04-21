@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                DELETE FROM members_by_teams\n                WHERE member_id = $1\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e2fcd1cb0369e92403ab7fdd93f576fcd849e09177da0059b12822f3b53b7b77"
+}
