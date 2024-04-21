@@ -389,6 +389,18 @@ impl TeamCrudOperations for SDKEngine {
     }
 
     async fn delete_team(&self, id: Uuid) -> Result<Team, SDKError> {
+        let mut tx = self.db_pool.as_ref().begin().await?;
+
+        sqlx::query!(
+            r#"
+                DELETE FROM teams_by_projects
+                WHERE team_id = $1
+                "#,
+            id,
+        )
+        .execute(&mut *tx)
+        .await?;
+
         let team_info = sqlx::query!(
             r#"
             DELETE FROM teams
@@ -397,8 +409,10 @@ impl TeamCrudOperations for SDKEngine {
             "#,
             id
         )
-        .fetch_one(self.db_pool.as_ref())
+        .fetch_one(&mut *tx)
         .await?;
+
+        tx.commit().await?;
 
         let team = Team {
             id: team_info.id,
