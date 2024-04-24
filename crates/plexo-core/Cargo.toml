@@ -12,7 +12,7 @@ serde = "1.0.198"
 argon2 = "0.5.3"
 oauth2 = "4.4.2"
 serde_json = "1.0.116"
-thiserror = "1.0.58"
+thiserror = "1.0.59"
 cookie = "0.18.1"
 dotenv = "0.15.0"
 async-graphql-poem = "7.0.4"
@@ -26,7 +26,7 @@ async-graphql = { version = "7.0.3", features = [
     "uuid",
     "tracing",
 ] }
-reqwest = { version = "0.12.3", features = ["json"] }
+reqwest = { version = "0.12.4", features = ["json"] }
 poem-openapi = { version = "5.0.0", features = [
     "swagger-ui",
     "chrono",
@@ -35,5 +35,9 @@ poem-openapi = { version = "5.0.0", features = [
 poem = { version = "3.0.0", features = ["cookie", "static-files"] }
 tracing-subscriber = "0.3.18"
 tracing = "0.1.40"
-lettre = "0.11.6"
+lettre = "0.11.7"
 askama = "0.12.1"
+
+[dependencies.openssl]
+version = "0.10.64"
+features = ["vendored"]
