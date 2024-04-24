@@ -11,14 +11,16 @@ RUN apk add --no-cache libressl-dev
 WORKDIR /app
 COPY ./ /app
 # do a release build
-RUN cargo build --release --bin plexo-core
+# RUN cargo build --release --bin plexo-core
+RUN rustup target add x86_64-unknown-linux-musl
+RUN cargo build --target x86_64-unknown-linux-musl --release --bin plexo-core
 RUN strip target/release/plexo-core
 
 # use a plain alpine image, the alpine version needs to match the builder
 FROM alpine:3.19 as core
 # if needed, install additional dependencies here
 RUN apk add --no-cache libgcc
-RUN apk add --no-cache libressl-dev
+# RUN apk add --no-cache libressl-dev
 
 # copy the binary into the final image
 COPY --from=core-builder /app/target/release/plexo-core .
